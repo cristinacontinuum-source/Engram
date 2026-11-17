@@ -1,0 +1,37 @@
+services:
+  agent-memory:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agent-memory:latest
+    container_name: agent-memory
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./memory-data:/data
+    environment:
+      DB_PATH: /data/memory.db
+      LOCAL_MODELS_DIR: /data/models
+      # Reasoning / Distillation LLM via 9Router or OpenAI-compatible provider
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://9router:20128/v1}
+      LLM_API_KEY: ${ROUTER_API_KEY:-dummy-key}
+      FAST_MODEL: ${FAST_MODEL:-gemini-2.5-flash}
+      # Embedding Config (Default: External API = 0 MB local model RAM)
+      EMBEDDING_MODE: ${EMBEDDING_MODE:-external}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-http://9router:20128/v1}
+      EMBEDDING_API_KEY: ${ROUTER_API_KEY:-dummy-key}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1536}
+      LOCAL_EMBEDDING_MODEL: ${LOCAL_EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
+      # Feature Flags & Dual-Auth Credentials
+      ENABLE_INGEST_WEBHOOK: ${ENABLE_INGEST_WEBHOOK:-false}
+      MCP_API_KEY: ${MCP_API_KEY:-sk-mem-hermes-secret}
+      DASHBOARD_USER: ${DASHBOARD_USER:-admin}
+      DASHBOARD_PASS: ${DASHBOARD_PASS:-admin123}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

@@ -1,0 +1,187 @@
+{
+  "app": {
+    "name": "Engram",
+    "subtitle": "Agent Memory Hub",
+    "version": "v1.0.0"
+  },
+  "sidebar": {
+    "workspaceLabel": "Active Workspace",
+    "allWorkspaces": "All Workspaces",
+    "navigation": "Console Views",
+    "overview": "Overview & Telemetry",
+    "explorer": "Memory Explorer",
+    "graph": "Knowledge Graph",
+    "playground": "Retrieval Playground",
+    "settings": "Settings & Providers",
+    "embeddingMode": "Embedding Engine",
+    "externalMode": "External API (0 MB RAM)",
+    "localMode": "Local ONNX (FastEmbed)",
+    "Collapse": "Collapse Sidebar",
+    "Expand": "Expand Sidebar"
+  },
+  "header": {
+    "searchTrigger": "Search or jump to command...",
+    "deliverablesBtn": "Architecture & Source",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "statusHealthy": "SQLite WAL + vec0 Online"
+  },
+  "commandPalette": {
+    "placeholder": "Type a command or search memories across workspaces...",
+    "sections": {
+      "navigation": "Jump to View",
+      "actions": "Quick Operations",
+      "memories": "Active Memories Match"
+    },
+    "actions": {
+      "newMemory": "Store New Memory / Directive",
+      "bulkSeed": "Open Import / Bulk Seed Rules Modal",
+      "reindex": "Trigger Live Vector Re-indexing",
+      "toggleTheme": "Toggle Dark / Light Console Theme",
+      "switchLang": "Switch Language (EN / ID)",
+      "exportJson": "Export Full Workspace Backup (.json)"
+    },
+    "noResults": "No matching commands or memories found."
+  },
+  "overview": {
+    "title": "Overview & Telemetry",
+    "subtitle": "Real-time hybrid recall metrics, token distillation efficiency, and cognitive worker status.",
+    "kpi": {
+      "activeMemories": "Active Memories",
+      "tokenSavings": "Token Compression Savings",
+      "avgLatency": "Avg Retrieval Latency",
+      "queueDepth": "Worker Queue Depth",
+      "supersededCount": "superseded versions",
+      "tokensSavedTotal": "tokens saved total",
+      "hybridPipeline": "vec0 + 1-hop graph",
+      "asyncTasks": "asyncio background queue"
+    },
+    "chart": {
+      "title": "Token Efficiency (Raw vs. Distilled Context)",
+      "subtitle": "Comparison of raw retrieved memory tokens against LLM-distilled prompt injections over recent queries.",
+      "rawTokens": "Raw Tokens",
+      "distilledTokens": "Distilled Tokens",
+      "savedBadge": "Avg Savings"
+    },
+    "proceduralFeed": {
+      "title": "Recent Procedural Rules & Anti-Patterns",
+      "subtitle": "Latest high-priority directives learned via learn_from_mistake and user rules.",
+      "viewAll": "Explore All",
+      "pinned": "PINNED",
+      "empty": "No procedural rules recorded in this workspace yet."
+    }
+  },
+  "explorer": {
+    "title": "Memory Explorer",
+    "subtitle": "Inspect, pin, edit, bulk-seed, or roll back bi-temporal memories across workspaces.",
+    "searchPlaceholder": "Filter by content, source, or memory ID...",
+    "typeAll": "All Types",
+    "typeSemantic": "Semantic",
+    "typeProcedural": "Procedural",
+    "typeEpisodic": "Episodic",
+    "statusAll": "All Status",
+    "statusActive": "Active",
+    "statusSuperseded": "Superseded",
+    "newMemoryBtn": "New Memory",
+    "importSeedBtn": "Import / Bulk Seed",
+    "exportJsonBtn": "Export JSON",
+    "table": {
+      "content": "Memory Content & Provenance",
+      "workspace": "Workspace",
+      "type": "Type",
+      "status": "Status",
+      "confidence": "Conf",
+      "pin": "Pin",
+      "actions": "Actions",
+      "empty": "No memories match the active filter criteria."
+    },
+    "drawer": {
+      "title": "Temporal Diff & Version Lineage",
+      "subtitle": "Non-destructive bi-temporal history chain (supersedes_id <-> superseded_by_id)",
+      "supersededVersion": "Selected Version (Superseded)",
+      "currentActiveVersion": "Successor / Active Version",
+      "rollbackBtn": "Rollback to This Version",
+      "rollingBack": "Restoring Version...",
+      "close": "Close"
+    },
+    "importModal": {
+      "title": "Import Backup or Bulk Seed Rules",
+      "tabJson": "1. Upload .JSON Backup",
+      "tabBulk": "2. Bulk Seed Multiline Rules",
+      "jsonDesc": "Upload a previously exported Engram JSON backup file or paste the JSON payload below.",
+      "bulkDesc": "Paste core directives or project rules (one per line or markdown bullets). Each line is embedded, secret-scrubbed, and indexed.",
+      "targetWorkspace": "Target Workspace",
+      "memoryType": "Memory Classification",
+      "autoPinAll": "Auto-Pin All Rules (Always included in core-directives)",
+      "submitImport": "Run Import / Seed",
+      "cancel": "Cancel"
+    }
+  },
+  "graph": {
+    "title": "Knowledge Graph Visualizer",
+    "subtitle": "Interactive 1-hop entity-relation triples extracted automatically during memory ingestion.",
+    "searchNodes": "Highlight entity node...",
+    "resetView": "Reset Camera",
+    "inspectorTitle": "Entity Node Inspector",
+    "inspectorEmpty": "Click any node on the canvas to inspect its connected triples and workspace memories.",
+    "connectedTriples": "Connected Triples (1-Hop Edges)",
+    "linkedMemories": "Workspace Memories Mentioning Entity"
+  },
+  "playground": {
+    "title": "Retrieval Playground & Token Debugger",
+    "subtitle": "Test hybrid recall ranking (0.55*Vec + 0.20*Graph + 0.15*Recency + 0.10*Conf + Pinned) and context distillation.",
+    "queryLabel": "Simulated Agent Recall Query",
+    "queryPlaceholder": "Enter a natural language question or task context...",
+    "distillToggle": "Distill Context via Fast LLM",
+    "topKLabel": "Top-K Candidates",
+    "runQueryBtn": "Execute Hybrid Recall",
+    "runningBtn": "Querying vec0 + Graph...",
+    "leftPanelTitle": "Distilled Agent Context Output",
+    "leftPanelSubtitle": "Exact payload returned to the MCP client tool call",
+    "rightPanelTitle": "Ranked Memory Candidates & Score Breakdown",
+    "scoreLabels": {
+      "vector": "Vector (0.55)",
+      "graph": "Graph (0.20)",
+      "recency": "Recency (0.15)",
+      "confidence": "Conf (0.10)",
+      "pinned": "Pinned Boost"
+    }
+  },
+  "settings": {
+    "title": "Settings & Provider Configuration",
+    "subtitle": "Configure OpenAI-compatible LLM endpoints, Zero-RAM embedding mode, vector re-indexing, and webhook ingestion.",
+    "saveBtn": "Save Configuration",
+    "savingBtn": "Saving...",
+    "card1": {
+      "title": "1. Reasoning & Distillation LLM",
+      "subtitle": "Powers Smart Merge deduplication, Entity-Relation triple extraction, and Context Distillation.",
+      "baseUrl": "LLM Base URL (OpenAI-Compatible)",
+      "apiKey": "LLM API Key",
+      "modelName": "Fast Model Name",
+      "testBtn": "Test LLM Connection"
+    },
+    "card2": {
+      "title": "2. Embedding Provider (Zero-RAM Switcher)",
+      "subtitle": "Switch between Zero-RAM External API (default) and lazy-loaded Local In-Container FastEmbed ONNX.",
+      "externalTab": "External API (Custom / 9Router)",
+      "localTab": "Local In-Container (FastEmbed ONNX)",
+      "baseUrl": "Embedding Base URL",
+      "apiKey": "Embedding API Key",
+      "modelName": "Embedding Model Name",
+      "dimension": "Vector Dimension",
+      "localModel": "Local FastEmbed ONNX Model",
+      "localCacheDir": "Persistent Volume Cache Path",
+      "testDetectBtn": "Test Connection & Detect Dimension",
+      "mismatchTitle": "Vector Dimension Mismatch Detected",
+      "mismatchDesc": "Configured embedding dimension differs from active sqlite-vec vec_memories table. Re-index all memories to rebuild the vector table cleanly.",
+      "reindexBtn": "Re-index All Memories"
+    },
+    "card3": {
+      "title": "3. Automation & Webhook Ingestion",
+      "subtitle": "Control the external POST /api/v1/ingest transcript extraction pipeline.",
+      "toggleLabel": "Enable Auto-Ingest Webhook (/api/v1/ingest)",
+      "enabledDesc": "Endpoint is live (HTTP 202 Accepted). External orchestrators can stream raw chat transcripts for background memory extraction.",
+      "disabledDesc": "Endpoint is locked (HTTP 403 Forbidden). Enable this toggle to accept external conversation transcripts."
+    }
+  }
+}

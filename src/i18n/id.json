@@ -1,0 +1,187 @@
+{
+  "app": {
+    "name": "Engram",
+    "subtitle": "Pusat Memori Agen",
+    "version": "v1.0.0"
+  },
+  "sidebar": {
+    "workspaceLabel": "Workspace Aktif",
+    "allWorkspaces": "Semua Workspace",
+    "navigation": "Tampilan Konsol",
+    "overview": "Ringkasan & Telemetri",
+    "explorer": "Penjelajah Memori",
+    "graph": "Graf Pengetahuan",
+    "playground": "Playground Retrieval",
+    "settings": "Pengaturan & Provider",
+    "embeddingMode": "Mesin Embedding",
+    "externalMode": "API Eksternal (0 MB RAM)",
+    "localMode": "ONNX Lokal (FastEmbed)",
+    "Collapse": "Sembunyikan Sidebar",
+    "Expand": "Tampilkan Sidebar"
+  },
+  "header": {
+    "searchTrigger": "Cari memori atau jalankan perintah...",
+    "deliverablesBtn": "Arsitektur & Kode",
+    "themeDark": "Gelap",
+    "themeLight": "Terang",
+    "statusHealthy": "SQLite WAL + vec0 Aktif"
+  },
+  "commandPalette": {
+    "placeholder": "Ketik perintah atau cari memori lintas workspace...",
+    "sections": {
+      "navigation": "Pindah Tampilan",
+      "actions": "Operasi Cepat",
+      "memories": "Memori Aktif yang Cocok"
+    },
+    "actions": {
+      "newMemory": "Simpan Memori / Aturan Baru",
+      "bulkSeed": "Buka Modal Impor / Bulk Seed Aturan",
+      "reindex": "Jalankan Re-index Vektor Langsung",
+      "toggleTheme": "Ubah Tema Konsol Gelap / Terang",
+      "switchLang": "Ganti Bahasa (EN / ID)",
+      "exportJson": "Ekspor Cadangan Workspace (.json)"
+    },
+    "noResults": "Tidak ada perintah atau memori yang cocok."
+  },
+  "overview": {
+    "title": "Ringkasan & Telemetri",
+    "subtitle": "Metrik hybrid recall real-time, efisiensi kompresi token, dan status antrean worker kognitif.",
+    "kpi": {
+      "activeMemories": "Memori Aktif",
+      "tokenSavings": "Penghematan Kompresi Token",
+      "avgLatency": "Rata-rata Latensi Retrieval",
+      "queueDepth": "Antrean Background Worker",
+      "supersededCount": "versi tergantikan",
+      "tokensSavedTotal": "total token dihemat",
+      "hybridPipeline": "vec0 + graf 1-hop",
+      "asyncTasks": "antrean asyncio latar"
+    },
+    "chart": {
+      "title": "Efisiensi Token (Token Mentah vs. Hasil Distilasi)",
+      "subtitle": "Perbandingan jumlah token memori mentah terhadap injeksi konteks hasil distilasi LLM pada kueri terbaru.",
+      "rawTokens": "Token Mentah",
+      "distilledTokens": "Token Distilasi",
+      "savedBadge": "Rata-rata Hemat"
+    },
+    "proceduralFeed": {
+      "title": "Aturan Prosedural & Anti-Pola Terbaru",
+      "subtitle": "Instruksi prioritas tinggi terbaru yang dipelajari dari learn_from_mistake dan aturan pengguna.",
+      "viewAll": "Lihat Semua",
+      "pinned": "DISEMATKAN",
+      "empty": "Belum ada aturan prosedural di workspace ini."
+    }
+  },
+  "explorer": {
+    "title": "Penjelajah Memori",
+    "subtitle": "Periksa, sematkan, sunting, bulk-seed, atau kembalikan versi memori bi-temporal lintas workspace.",
+    "searchPlaceholder": "Saring berdasarkan isi, sumber, atau ID memori...",
+    "typeAll": "Semua Tipe",
+    "typeSemantic": "Semantik",
+    "typeProcedural": "Prosedural",
+    "typeEpisodic": "Episodik",
+    "statusAll": "Semua Status",
+    "statusActive": "Aktif",
+    "statusSuperseded": "Tergantikan",
+    "newMemoryBtn": "Memori Baru",
+    "importSeedBtn": "Impor / Bulk Seed",
+    "exportJsonBtn": "Ekspor JSON",
+    "table": {
+      "content": "Isi Memori & Sumber",
+      "workspace": "Workspace",
+      "type": "Tipe",
+      "status": "Status",
+      "confidence": "Konf",
+      "pin": "Pin",
+      "actions": "Aksi",
+      "empty": "Tidak ada memori yang sesuai dengan filter aktif."
+    },
+    "drawer": {
+      "title": "Diff Temporal & Riwayat Versi",
+      "subtitle": "Rantai riwayat bi-temporal non-destruktif (supersedes_id <-> superseded_by_id)",
+      "supersededVersion": "Versi Terpilih (Superseded)",
+      "currentActiveVersion": "Versi Penerus / Aktif",
+      "rollbackBtn": "Kembalikan ke Versi Ini",
+      "rollingBack": "Mengembalikan Versi...",
+      "close": "Tutup"
+    },
+    "importModal": {
+      "title": "Impor Cadangan atau Bulk Seed Aturan",
+      "tabJson": "1. Unggah File .JSON",
+      "tabBulk": "2. Bulk Seed Aturan Multibaris",
+      "jsonDesc": "Unggah file cadangan JSON Engram atau tempelkan isi JSON di bawah ini.",
+      "bulkDesc": "Tempelkan aturan inti atau fakta proyek (satu per baris atau bullet markdown). Setiap baris akan di-embed, disensor rahasianya, dan diindeks.",
+      "targetWorkspace": "Workspace Tujuan",
+      "memoryType": "Klasifikasi Memori",
+      "autoPinAll": "Otomatis Sematkan Semua (Selalu masuk ke core-directives)",
+      "submitImport": "Jalankan Impor / Seed",
+      "cancel": "Batal"
+    }
+  },
+  "graph": {
+    "title": "Visualisasi Graf Pengetahuan",
+    "subtitle": "Graf interaktif relasi entitas 1-hop yang diekstrak otomatis saat penyimpanan memori.",
+    "searchNodes": "Cari node entitas...",
+    "resetView": "Reset Kamera",
+    "inspectorTitle": "Inspektur Node Entitas",
+    "inspectorEmpty": "Klik node mana saja pada kanvas untuk memeriksa relasi triple dan memori terkait.",
+    "connectedTriples": "Relasi Triple Terhubung (1-Hop)",
+    "linkedMemories": "Memori Workspace Terkait Entitas"
+  },
+  "playground": {
+    "title": "Playground Retrieval & Debugger Token",
+    "subtitle": "Uji peringkat hybrid recall (0.55*Vec + 0.20*Graph + 0.15*Recency + 0.10*Conf + Pinned) dan distilasi konteks.",
+    "queryLabel": "Simulasi Kueri Recall Agen",
+    "queryPlaceholder": "Masukkan pertanyaan bahasa alami atau konteks tugas...",
+    "distillToggle": "Distilasi Konteks via Fast LLM",
+    "topKLabel": "Kandidat Top-K",
+    "runQueryBtn": "Jalankan Hybrid Recall",
+    "runningBtn": "Mengambil vec0 + Graf...",
+    "leftPanelTitle": "Output Konteks Agen Terdistilasi",
+    "leftPanelSubtitle": "Teks persis yang dikirim ke pemanggil tool MCP",
+    "rightPanelTitle": "Kandidat Memori & Rincian Skor",
+    "scoreLabels": {
+      "vector": "Vektor (0.55)",
+      "graph": "Graf (0.20)",
+      "recency": "Terbaru (0.15)",
+      "confidence": "Konf (0.10)",
+      "pinned": "Boost Pin"
+    }
+  },
+  "settings": {
+    "title": "Pengaturan & Konfigurasi Provider",
+    "subtitle": "Atur endpoint LLM kompatibel OpenAI, mode embedding Zero-RAM, re-index vektor, dan webhook ingest.",
+    "saveBtn": "Simpan Konfigurasi",
+    "savingBtn": "Menyimpan...",
+    "card1": {
+      "title": "1. LLM Penalaran & Distilasi",
+      "subtitle": "Menjalankan deduplikasi Smart Merge, ekstraksi triple entitas-relasi, dan Distilasi Konteks.",
+      "baseUrl": "Base URL LLM (Kompatibel OpenAI)",
+      "apiKey": "API Key LLM",
+      "modelName": "Nama Model Cepat",
+      "testBtn": "Uji Koneksi LLM"
+    },
+    "card2": {
+      "title": "2. Provider Embedding (Sakelar Zero-RAM)",
+      "subtitle": "Pilih antara API Eksternal Zero-RAM (bawaan) atau FastEmbed ONNX Lokal di dalam kontainer.",
+      "externalTab": "API Eksternal (Kustom / 9Router)",
+      "localTab": "Lokal di Kontainer (FastEmbed ONNX)",
+      "baseUrl": "Base URL Embedding",
+      "apiKey": "API Key Embedding",
+      "modelName": "Nama Model Embedding",
+      "dimension": "Dimensi Vektor",
+      "localModel": "Model ONNX FastEmbed Lokal",
+      "localCacheDir": "Path Cache Volume Persisten",
+      "testDetectBtn": "Uji Koneksi & Deteksi Dimensi",
+      "mismatchTitle": "Ketidakcocokan Dimensi Vektor Terdeteksi",
+      "mismatchDesc": "Dimensi embedding berbeda dengan tabel sqlite-vec vec_memories aktif. Jalankan Re-index untuk membangun ulang tabel vektor.",
+      "reindexBtn": "Re-index Semua Memori"
+    },
+    "card3": {
+      "title": "3. Otomasi & Webhook Ingestion",
+      "subtitle": "Kendalikan pipeline ekstraksi transkrip eksternal POST /api/v1/ingest.",
+      "toggleLabel": "Aktifkan Webhook Auto-Ingest (/api/v1/ingest)",
+      "enabledDesc": "Endpoint aktif (HTTP 202 Accepted). Orkestrator eksternal dapat mengirim transkrip percakapan untuk ekstraksi memori latar belakang.",
+      "disabledDesc": "Endpoint terkunci (HTTP 403 Forbidden). Aktifkan sakelar ini untuk menerima transkrip percakapan eksternal."
+    }
+  }
+}

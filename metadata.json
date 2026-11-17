@@ -1,0 +1,6 @@
+{
+  "name": "Agent Memory Hub",
+  "description": "Self-hosted single-container AI Memory Engine with Dual-Transport MCP Server, sqlite-vec hybrid retrieval, and Raycast/Linear Developer Console.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
