@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  Coins,
   CornerDownLeft,
   Database,
   Download,
@@ -8,10 +9,12 @@ import {
   Globe,
   Moon,
   Network,
+  Plug2,
   Plus,
   RefreshCw,
   Search,
   Settings,
+  ShieldAlert,
   Sun,
   Upload,
   X,
@@ -99,12 +102,24 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         },
       },
       {
+        id: 'nav-directives',
+        section: 'navigation',
+        label: dict.sidebar.directives,
+        sublabel: 'Core rules, anti-patterns & live MCP prompt injection preview',
+        icon: <ShieldAlert className="w-4 h-4 text-rose-400" />,
+        shortcut: '3',
+        action: () => {
+          onSelectTab('directives');
+          onClose();
+        },
+      },
+      {
         id: 'nav-graph',
         section: 'navigation',
         label: dict.sidebar.graph,
         sublabel: 'Interactive 1-hop entity-relation force-directed canvas',
         icon: <Network className="w-4 h-4 text-purple-400" />,
-        shortcut: '3',
+        shortcut: '4',
         action: () => {
           onSelectTab('graph');
           onClose();
@@ -116,9 +131,57 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         label: dict.sidebar.playground,
         sublabel: 'Hybrid recall score debugger & context distillation',
         icon: <FlaskConical className="w-4 h-4 text-amber-400" />,
-        shortcut: '4',
+        shortcut: '5',
         action: () => {
           onSelectTab('playground');
+          onClose();
+        },
+      },
+      {
+        id: 'nav-activity',
+        section: 'navigation',
+        label: dict.sidebar.activity,
+        sublabel: 'Async asyncio.Queue job history, transcript extractor & TTL sweeps',
+        icon: <Activity className="w-4 h-4 text-emerald-400" />,
+        shortcut: '6',
+        action: () => {
+          onSelectTab('activity');
+          onClose();
+        },
+      },
+      {
+        id: 'nav-hygiene',
+        section: 'navigation',
+        label: dict.sidebar.hygiene,
+        sublabel: 'Resolve conflicting directives, near-duplicates, stale & expiring memories',
+        icon: <ShieldAlert className="w-4 h-4 text-amber-400" />,
+        shortcut: '7',
+        action: () => {
+          onSelectTab('hygiene');
+          onClose();
+        },
+      },
+      {
+        id: 'nav-analytics',
+        section: 'navigation',
+        label: dict.sidebar.analytics,
+        sublabel: 'Token compression ROI, USD cost savings & short-session vs bloat simulator',
+        icon: <Coins className="w-4 h-4 text-emerald-400" />,
+        shortcut: '8',
+        action: () => {
+          onSelectTab('analytics');
+          onClose();
+        },
+      },
+      {
+        id: 'nav-integrations',
+        section: 'navigation',
+        label: dict.sidebar.integrations,
+        sublabel: 'Hermes Agent, Claude Desktop, Cursor, Windsurf & MCP endpoint probe',
+        icon: <Plug2 className="w-4 h-4 text-emerald-400" />,
+        shortcut: '9',
+        action: () => {
+          onSelectTab('integrations');
           onClose();
         },
       },
@@ -128,7 +191,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         label: dict.sidebar.settings,
         sublabel: 'LLM config, Zero-RAM embedding switcher & auto-ingest webhook',
         icon: <Settings className="w-4 h-4 text-sky-400" />,
-        shortcut: '5',
+        shortcut: '0',
         action: () => {
           onSelectTab('settings');
           onClose();

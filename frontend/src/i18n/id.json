@@ -10,8 +10,13 @@
     "navigation": "Tampilan Konsol",
     "overview": "Ringkasan & Telemetri",
     "explorer": "Penjelajah Memori",
+    "directives": "Direktif Inti",
     "graph": "Graf Pengetahuan",
     "playground": "Playground Retrieval",
+    "activity": "Aktivitas Worker",
+    "hygiene": "Kebersihan & Konflik",
+    "analytics": "Analitik Token & Biaya",
+    "integrations": "Integrasi MCP",
     "settings": "Pengaturan & Provider",
     "embeddingMode": "Mesin Embedding",
     "externalMode": "API Eksternal (0 MB RAM)",
@@ -183,5 +188,132 @@
       "enabledDesc": "Endpoint aktif (HTTP 202 Accepted). Orkestrator eksternal dapat mengirim transkrip percakapan untuk ekstraksi memori latar belakang.",
       "disabledDesc": "Endpoint terkunci (HTTP 403 Forbidden). Aktifkan sakelar ini untuk menerima transkrip percakapan eksternal."
     }
+  },
+  "directives": {
+    "title": "Direktif Inti & Pratinjau Sesi",
+    "subtitle": "Kelola aturan wajib agen, anti-pola learn_from_mistake, serta pratinjau injeksi prompt baseline MCP.",
+    "addBtn": "Tambah Direktif",
+    "searchPlaceholder": "Saring direktif atau anti-pola...",
+    "copyPromptBtn": "Salin Prompt",
+    "copiedPromptBtn": "Tersalin",
+    "tabs": {
+      "all": "Semua",
+      "antiPattern": "Anti-Pola",
+      "pinnedRule": "Aturan Disematkan",
+      "procedural": "Prosedural"
+    },
+    "kpi": {
+      "activeDirectives": "Direktif Aktif",
+      "antiPatterns": "Guardrail Anti-Pola",
+      "coreTokens": "Injeksi Core Directives",
+      "sessionTokens": "Anggaran Session Briefing"
+    },
+    "preview": {
+      "title": "Pratinjau Injeksi Prompt MCP Langsung",
+      "subtitle": "Payload baseline persis yang disuntikkan ke agen sebelum recall tugas.",
+      "coreTab": "core-directives",
+      "sessionTab": "session-summary",
+      "budgetLabel": "Anggaran Token Baseline",
+      "healthy": "Sehat • Konteks Ramping",
+      "warning": "Sedang • Pantau Ukuran",
+      "heavy": "Berat • Pangkas Direktif"
+    },
+    "empty": "Belum ada aturan disematkan atau direktif prosedural pada workspace aktif."
+  },
+  "integrations": {
+    "title": "Integrasi MCP & Agen",
+    "subtitle": "Buat konfigurasi MCP siap tempel untuk Hermes Agent, Claude Desktop, Cursor, Windsurf, Continue, dan uji kesehatan transport.",
+    "probeBtn": "Uji Endpoint MCP",
+    "probingBtn": "Menguji Transport...",
+    "copyBtn": "Salin Konfigurasi",
+    "copiedBtn": "Tersalin",
+    "kpi": {
+      "transports": "Dual Transport MCP",
+      "authBoundary": "Keamanan Bearer Auth",
+      "webhook": "Webhook Auto-Ingest",
+      "capabilities": "Kapasitas MCP"
+    },
+    "generator": {
+      "title": "Generator Konfigurasi Klien",
+      "subtitle": "Pilih IDE atau agen AI untuk menghasilkan konfigurasi JSON/CLI siap pakai.",
+      "baseUrlLabel": "Base URL Server Engram",
+      "transportLabel": "Protokol Transport",
+      "workspaceLabel": "Workspace Target",
+      "tokenLabel": "Placeholder Token Auth",
+      "rulesTitle": "Protokol System Prompt / AGENTS.md Disarankan"
+    },
+    "probe": {
+      "title": "Kesehatan Transport & Kapabilitas",
+      "subtitle": "Uji endpoint langsung dan klik tool atau resource MCP mana saja untuk memeriksa skemanya.",
+      "toolsHeading": "Tool MCP Terdaftar (4)",
+      "resourcesHeading": "Resource MCP Terdaftar (2)"
+    }
+  },
+  "activity": {
+    "title": "Aktivitas Ingest & Worker",
+    "subtitle": "Pantau antrean asinkron asyncio.Queue, ekstraksi transkrip webhook, penyensoran rahasia, re-index vektor, dan pembersihan memori kedaluwarsa (TTL).",
+    "runTtlBtn": "Jalankan Sapuan TTL",
+    "runningTtlBtn": "Menyapu TTL...",
+    "reindexBtn": "Picu Re-index",
+    "simulateIngestBtn": "Simulasi Ingest Transkrip",
+    "searchPlaceholder": "Saring pekerjaan berdasarkan ID, ringkasan, workspace, atau payload...",
+    "kpi": {
+      "workerLoop": "Loop & Antrean Worker",
+      "jobsProcessed": "Tugas Selesai & Kecepatan",
+      "webhookStatus": "Webhook Auto-Ingest",
+      "vectorMaintenance": "Re-index & Sapuan TTL"
+    },
+    "tabs": {
+      "all": "Semua Tugas",
+      "store_memory": "store_memory",
+      "ingest_messages": "ingest_messages",
+      "reindex_all": "reindex_all",
+      "ttl_cleanup": "ttl_cleanup"
+    },
+    "empty": "Belum ada catatan pekerjaan background worker yang sesuai filter."
+  },
+  "hygiene": {
+    "title": "Kebersihan Memori & Konflik",
+    "subtitle": "Audit aturan kontradiktif, duplikasi semantik mendekati sama, memori usang tak terpakai, dan memori episodik yang hampir kedaluwarsa.",
+    "runAuditBtn": "Jalankan Audit Kebersihan",
+    "auditingBtn": "Memindai...",
+    "searchPlaceholder": "Saring temuan berdasarkan ID memori, workspace, atau alasan...",
+    "kpi": {
+      "healthScore": "Skor Kesehatan Memori",
+      "conflicts": "Konflik Aturan & Konfig",
+      "duplicates": "Duplikasi Mendekati Sama",
+      "staleExpiring": "Usang / Hampir Kedaluwarsa"
+    },
+    "tabs": {
+      "all": "Semua Temuan",
+      "conflict": "Konflik",
+      "duplicate": "Duplikasi",
+      "stale": "Memori Usang",
+      "expiring": "Kedaluwarsa TTL"
+    },
+    "empty": "Kebersihan memori workspace bersih — tidak ditemukan konflik, duplikasi, atau memori usang."
+  },
+  "analytics": {
+    "title": "Analitik Token & Biaya",
+    "subtitle": "Ukur kompresi token nyata, penghematan biaya USD di berbagai tier model LLM, dan bukti mengapa sesi pendek dengan Engram jauh lebih hemat dibanding riwayat chat panjang.",
+    "exportCsvBtn": "Ekspor CSV",
+    "refreshBtn": "Segarkan Analitik",
+    "searchPlaceholder": "Saring log retrieval berdasarkan kueri, ID, atau workspace...",
+    "kpi": {
+      "tokensSaved": "Total Token Dihemat",
+      "costSaved": "Estimasi Hemat Biaya USD",
+      "compression": "Rata-rata Kompresi Konteks",
+      "sessionRoi": "ROI Sesi Pendek"
+    },
+    "simulator": {
+      "title": "Simulator Sesi Pendek vs. Pembengkakan Konteks Panjang",
+      "subtitle": "Bandingkan total token input kumulatif selama N giliran saat mengulang riwayat penuh vs. Direktif Inti + Recall Terdistilasi Engram.",
+      "withoutLabel": "Tanpa Engram (Replay Chat Penuh)",
+      "withLabel": "Sesi Pendek + Distiler Engram",
+      "turnsLabel": "Jumlah Giliran Chat"
+    },
+    "workspaceTitle": "Rincian Token & Biaya per Workspace",
+    "workspaceSubtitle": "Kompresi token dan estimasi penghematan dikelompokkan berdasarkan isolasi workspace agen.",
+    "empty": "Tidak ada data telemetri retrieval yang sesuai dengan filter aktif."
   }
 }

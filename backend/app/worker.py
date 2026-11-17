@@ -1,8 +1,10 @@
 import asyncio
 import logging
+import time
 import uuid
+from collections import deque
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Deque, Dict, List, Optional
 
 from app.config import settings
 from app.database import (
@@ -34,6 +36,9 @@ class BackgroundWorker:
         self._ttl_task: Optional[asyncio.Task[None]] = None
         self._running: bool = False
         self._jobs_processed: int = 0
+        self._ttl_sweeps_count: int = 0
+        self._expired_cleaned_total: int = 0
+        self._job_history: Deque[Dict[str, Any]] = deque(maxlen=100)
         self._reindex_state: Dict[str, Any] = {
             "status": "idle",
             "dimension": settings.embedding_dimension,
@@ -53,6 +58,61 @@ class BackgroundWorker:
         return {
             **self._reindex_state,
             "queue_depth": self.queue_depth,
+        }
+
+    def _record_job(
+        self,
+        *,
+        job_id: str,
+        job_type: str,
+        workspace: str,
+        status: str,
+        summary: str,
+        detail: str,
+        items_processed: int = 1,
+        secrets_redacted: int = 0,
+        latency_ms: float = 0.0,
+        created_at: Optional[str] = None,
+        completed_at: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        entry: Dict[str, Any] = {
+            "job_id": job_id,
+            "job_type": job_type,
+            "workspace": workspace or "global",
+            "status": status,
+            "summary": summary,
+            "detail": detail,
+            "items_processed": items_processed,
+            "secrets_redacted": secrets_redacted,
+            "latency_ms": round(latency_ms, 1),
+            "created_at": created_at or utc_now_iso(),
+            "completed_at": completed_at,
+        }
+        self._job_history.appendleft(entry)
+        return entry
+
+    def get_activity_snapshot(
+        self,
+        workspace: Optional[str] = None,
+        job_type: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        ws = (workspace or "").strip()
+        jt = (job_type or "").strip()
+        jobs = list(self._job_history)
+        if ws and ws != "all":
+            jobs = [j for j in jobs if j.get("workspace") in (ws, "global")]
+        if jt and jt != "all":
+            jobs = [j for j in jobs if j.get("job_type") == jt]
+
+        return {
+            "worker_running": self._running,
+            "queue_depth": self.queue_depth,
+            "jobs_processed": self._jobs_processed,
+            "ttl_sweeps_count": self._ttl_sweeps_count,
+            "expired_cleaned_total": self._expired_cleaned_total,
+            "auto_ingest_enabled": bool(settings.enable_ingest_webhook),
+            "reindex_status": self.get_reindex_status(),
+            "jobs": jobs,
         }
 
     async def start(self) -> None:
@@ -179,42 +239,105 @@ class BackgroundWorker:
             job_id = job.get("job_id", "unknown")
             job_type = job.get("job_type", "")
             payload = job.get("payload", {})
+            enqueued_at = job.get("enqueued_at") or utc_now_iso()
+            workspace = str(payload.get("workspace") or "global")
+            t0 = time.perf_counter()
 
             try:
                 if job_type == "store_memory":
-                    await memory_engine.ingest_memory(
-                        content=payload["content"],
+                    raw_content = str(payload.get("content", ""))
+                    res = await memory_engine.ingest_memory(
+                        content=raw_content,
                         memory_type=payload.get("memory_type", "semantic"),
-                        workspace=payload.get("workspace", "global"),
+                        workspace=workspace,
                         source=payload.get("source", "agent_inferred"),
                         confidence=float(payload.get("confidence", 0.85)),
                         is_pinned=bool(payload.get("is_pinned", False)),
                         ttl_hours=payload.get("ttl_hours"),
                         extract_graph=True,
                     )
-                elif job_type == "ingest_messages":
-                    extracted = await llm_service.extract_memories_from_messages(
-                        payload.get("messages", [])
+                    latency_ms = (time.perf_counter() - t0) * 1000.0
+                    redactions = int(res.get("secrets_redacted", 0) or 0)
+                    action = res.get("action", "inserted")
+                    self._record_job(
+                        job_id=job_id,
+                        job_type="store_memory",
+                        workspace=workspace,
+                        status="completed",
+                        summary=f"{action} {payload.get('memory_type', 'semantic')} memory ({payload.get('source', 'agent_inferred')})",
+                        detail=raw_content[:260],
+                        items_processed=1,
+                        secrets_redacted=redactions,
+                        latency_ms=latency_ms,
+                        created_at=enqueued_at,
+                        completed_at=utc_now_iso(),
                     )
-                    ws = payload.get("workspace", "global")
+                elif job_type == "ingest_messages":
+                    messages = payload.get("messages", [])
+                    extracted = await llm_service.extract_memories_from_messages(messages)
+                    redactions_total = 0
                     for item in extracted:
-                        await memory_engine.ingest_memory(
+                        res = await memory_engine.ingest_memory(
                             content=item["content"],
                             memory_type=item.get("memory_type", "semantic"),
-                            workspace=ws,
+                            workspace=workspace,
                             source="agent_inferred",
                             confidence=float(item.get("confidence", 0.85)),
                             is_pinned=item.get("memory_type") == "procedural",
                             extract_graph=True,
                         )
+                        redactions_total += int(res.get("secrets_redacted", 0) or 0)
+                    latency_ms = (time.perf_counter() - t0) * 1000.0
+                    self._record_job(
+                        job_id=job_id,
+                        job_type="ingest_messages",
+                        workspace=workspace,
+                        status="completed",
+                        summary=f"Extracted {len(extracted)} memories from {len(messages)} conversation turns",
+                        detail=f"POST /api/v1/ingest -> workspace={workspace} • extracted={len(extracted)}",
+                        items_processed=len(extracted),
+                        secrets_redacted=redactions_total,
+                        latency_ms=latency_ms,
+                        created_at=enqueued_at,
+                        completed_at=utc_now_iso(),
+                    )
                 elif job_type == "reindex_all":
-                    await self.run_reindex_all(
+                    st = await self.run_reindex_all(
                         target_dimension=payload.get("target_dimension")
+                    )
+                    latency_ms = (time.perf_counter() - t0) * 1000.0
+                    failed = int(st.get("failed", 0) or 0)
+                    self._record_job(
+                        job_id=job_id,
+                        job_type="reindex_all",
+                        workspace="global",
+                        status="completed" if failed == 0 else "failed",
+                        summary=f"Re-indexed {st.get('completed', 0)}/{st.get('total', 0)} vectors @ {st.get('dimension', settings.embedding_dimension)}d",
+                        detail=st.get("last_error") or f"vec_memories recreated at {st.get('dimension', settings.embedding_dimension)}d",
+                        items_processed=int(st.get("completed", 0) or 0),
+                        secrets_redacted=0,
+                        latency_ms=latency_ms,
+                        created_at=enqueued_at,
+                        completed_at=utc_now_iso(),
                     )
 
                 self._jobs_processed += 1
             except Exception as exc:
+                latency_ms = (time.perf_counter() - t0) * 1000.0
                 logger.error("Worker job %s (%s) failed: %s", job_id, job_type, exc)
+                self._record_job(
+                    job_id=job_id,
+                    job_type=job_type or "store_memory",
+                    workspace=workspace,
+                    status="failed",
+                    summary=f"Job failed: {str(exc)[:120]}",
+                    detail=str(exc),
+                    items_processed=0,
+                    secrets_redacted=0,
+                    latency_ms=latency_ms,
+                    created_at=enqueued_at,
+                    completed_at=utc_now_iso(),
+                )
             finally:
                 self._queue.task_done()
 
@@ -287,11 +410,12 @@ class BackgroundWorker:
         self._reindex_state["completed_at"] = utc_now_iso()
         return self.get_reindex_status()
 
-    def cleanup_expired_memories(self) -> int:
+    def cleanup_expired_memories(self, record_empty: bool = False) -> int:
         """
         Deletes expired TTL memories (`expires_at IS NOT NULL AND expires_at <= now`)
         and cascades cleanup to `vec_memories`.
         """
+        t0 = time.perf_counter()
         now_iso = datetime.now(timezone.utc).isoformat()
         with get_db() as conn:
             expired_rows = conn.execute(
@@ -302,27 +426,44 @@ class BackgroundWorker:
                 (now_iso,),
             ).fetchall()
 
-            if not expired_rows:
-                return 0
+            cleaned = len(expired_rows)
+            if cleaned > 0:
+                expired_ids = [r["id"] for r in expired_rows]
+                placeholders = ",".join("?" for _ in expired_ids)
+                conn.execute(
+                    f"DELETE FROM vec_memories WHERE memory_id IN ({placeholders})",
+                    tuple(expired_ids),
+                )
+                conn.execute(
+                    f"DELETE FROM memories WHERE id IN ({placeholders})",
+                    tuple(expired_ids),
+                )
+                logger.info("Cleaned up %d expired TTL memories", cleaned)
 
-            expired_ids = [r["id"] for r in expired_rows]
-            placeholders = ",".join("?" for _ in expired_ids)
-            conn.execute(
-                f"DELETE FROM vec_memories WHERE memory_id IN ({placeholders})",
-                tuple(expired_ids),
+        self._ttl_sweeps_count += 1
+        self._expired_cleaned_total += cleaned
+        if cleaned > 0 or record_empty:
+            latency_ms = (time.perf_counter() - t0) * 1000.0
+            self._record_job(
+                job_id=f"job_{uuid.uuid4().hex[:12]}",
+                job_type="ttl_cleanup",
+                workspace="global",
+                status="completed",
+                summary=f"TTL sweep removed {cleaned} expired episodic record(s)",
+                detail=f"Checked expires_at <= {now_iso}; removed {cleaned} expired rows from memories + vec_memories.",
+                items_processed=cleaned,
+                secrets_redacted=0,
+                latency_ms=latency_ms,
+                created_at=now_iso,
+                completed_at=utc_now_iso(),
             )
-            conn.execute(
-                f"DELETE FROM memories WHERE id IN ({placeholders})",
-                tuple(expired_ids),
-            )
-            logger.info("Cleaned up %d expired TTL memories", len(expired_ids))
-            return len(expired_ids)
+        return cleaned
 
     async def _ttl_cleanup_loop(self) -> None:
         while self._running:
             try:
                 await asyncio.sleep(60.0)
-                self.cleanup_expired_memories()
+                self.cleanup_expired_memories(record_empty=False)
             except asyncio.CancelledError:
                 break
             except Exception as exc:

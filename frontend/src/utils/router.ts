@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { TabId } from '../types/engram';
 
-const VALID_TABS: TabId[] = ['overview', 'explorer', 'graph', 'playground', 'settings'];
+const VALID_TABS: TabId[] = ['overview', 'explorer', 'directives', 'graph', 'playground', 'activity', 'hygiene', 'analytics', 'integrations', 'settings'];
 
 function parseRouteFromLocation(): { tab: TabId; workspace: string } {
   if (typeof window === 'undefined') {

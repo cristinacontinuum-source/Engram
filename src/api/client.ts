@@ -1,18 +1,32 @@
 import {
+  AnalyticsSummaryResponse,
+  DirectivesPreviewResponse,
   GraphEdge,
   GraphNode,
   GraphResponse,
+  HygieneAuditResponse,
+  IntegrationProbeResponse,
+  IntegrationsStatusResponse,
+  McpTransportKind,
   MemoryHistoryChain,
   MemoryRecord,
   MemoryStatus,
   MemoryType,
+  ModelPricingProfileId,
   PlaygroundCandidate,
   PlaygroundQueryResponse,
   ReindexStatus,
   SettingsPayload,
   StatsResponse,
   TelemetryLogItem,
+  WorkerActivityResponse,
+  WorkerJobRecord,
+  WorkerJobType,
 } from '../types/engram';
+import { extractMemoriesFromTranscriptText, filterWorkerJobs } from '../utils/activity';
+import { buildTokenAnalytics } from '../utils/analytics';
+import { buildDirectivesPreviewPayload } from '../utils/directives';
+import { analyzeMemoryHygiene } from '../utils/hygiene';
 import { computeCompositeScore, scrubSecretsText } from '../utils/phase1Logic';
 
 const STORAGE_KEY_MEMORIES = 'engram_memories_v1';
@@ -20,6 +34,93 @@ const STORAGE_KEY_NODES = 'engram_graph_nodes_v1';
 const STORAGE_KEY_EDGES = 'engram_graph_edges_v1';
 const STORAGE_KEY_SETTINGS = 'engram_settings_v1';
 const STORAGE_KEY_TELEMETRY = 'engram_telemetry_v1';
+const STORAGE_KEY_ACTIVITY_JOBS = 'engram_activity_jobs_v1';
+const STORAGE_KEY_ACTIVITY_META = 'engram_activity_meta_v1';
+const STORAGE_KEY_HYGIENE_DISMISSED = 'engram_hygiene_dismissed_v1';
+
+interface ActivityMetaState {
+  ttl_sweeps_count: number;
+  expired_cleaned_total: number;
+}
+
+const INITIAL_ACTIVITY_META: ActivityMetaState = {
+  ttl_sweeps_count: 14,
+  expired_cleaned_total: 6,
+};
+
+const INITIAL_ACTIVITY_JOBS: WorkerJobRecord[] = [
+  {
+    job_id: 'job_9f4b21c8e301',
+    job_type: 'ingest_messages',
+    workspace: 'hermes',
+    status: 'completed',
+    summary: 'Extracted 3 memories from 6 conversation turns',
+    detail: 'POST /api/v1/ingest • workspace=hermes • 1 API token scrubbed -> [REDACTED_SECRET]',
+    items_processed: 3,
+    secrets_redacted: 1,
+    latency_ms: 42.8,
+    created_at: '2026-11-16T04:18:10Z',
+    completed_at: '2026-11-16T04:18:10Z',
+  },
+  {
+    job_id: 'job_8d3a10f2a904',
+    job_type: 'store_memory',
+    workspace: 'global',
+    status: 'completed',
+    summary: 'inserted procedural memory (tool_error)',
+    detail: '[ANTI-PATTERN] Never import fastembed at top-level module scope; lazy-load TextEmbedding inside _get_local_embedder().',
+    items_processed: 1,
+    secrets_redacted: 0,
+    latency_ms: 19.4,
+    created_at: '2026-11-16T03:52:00Z',
+    completed_at: '2026-11-16T03:52:00Z',
+  },
+  {
+    job_id: 'job_7c2e09d4b112',
+    job_type: 'ttl_cleanup',
+    workspace: 'global',
+    status: 'completed',
+    summary: 'TTL sweep removed 2 expired episodic record(s)',
+    detail: 'Periodic 60s cleaner expired 2 scratchpad records from memories + vec_memories.',
+    items_processed: 2,
+    secrets_redacted: 0,
+    latency_ms: 4.6,
+    created_at: '2026-11-16T03:40:00Z',
+    completed_at: '2026-11-16T03:40:00Z',
+  },
+  {
+    job_id: 'job_6a1d88c3e771',
+    job_type: 'reindex_all',
+    workspace: 'global',
+    status: 'completed',
+    summary: 'Re-indexed 8/8 vectors @ 1536d',
+    detail: 'Recreated vec_memories virtual table using sqlite-vec WAL mode.',
+    items_processed: 8,
+    secrets_redacted: 0,
+    latency_ms: 318.2,
+    created_at: '2026-11-16T02:15:30Z',
+    completed_at: '2026-11-16T02:15:31Z',
+  },
+  {
+    job_id: 'job_5b0c77a1f409',
+    job_type: 'store_memory',
+    workspace: 'ops-agent',
+    status: 'completed',
+    summary: 'superseded semantic memory (mcp_store)',
+    detail: 'Upgraded PostgreSQL connection pool limit from max 20 -> 45 workers for zero timeout spikes.',
+    items_processed: 1,
+    secrets_redacted: 0,
+    latency_ms: 24.1,
+    created_at: '2026-11-15T21:10:00Z',
+    completed_at: '2026-11-15T21:10:00Z',
+  },
+];
+
+function appendActivityJob(job: WorkerJobRecord): void {
+  const jobs = loadStore<WorkerJobRecord[]>(STORAGE_KEY_ACTIVITY_JOBS, INITIAL_ACTIVITY_JOBS);
+  jobs.unshift(job);
+  saveStore(STORAGE_KEY_ACTIVITY_JOBS, jobs.slice(0, 100));
+}
 
 const INITIAL_MEMORIES: MemoryRecord[] = [
   {
@@ -192,6 +293,108 @@ const INITIAL_MEMORIES: MemoryRecord[] = [
     access_count: 15,
     last_accessed_at: '2026-11-16T01:45:00Z',
   },
+  {
+    id: 'mem-ops-conflict-09',
+    workspace: 'ops-agent',
+    content: 'Legacy ops-agent rotation script allows skipping GET /health probe during emergency 9Router upstream API keys rotation.',
+    type: 'semantic',
+    status: 'active',
+    source: 'auto_ingest',
+    confidence: 0.71,
+    is_pinned: 0,
+    supersedes_id: null,
+    superseded_by_id: null,
+    valid_from: '2026-11-08T10:15:00Z',
+    valid_until: null,
+    expires_at: null,
+    access_count: 2,
+    last_accessed_at: '2026-11-08T10:15:00Z',
+  },
+  {
+    id: 'mem-hermes-dup-10',
+    workspace: 'hermes',
+    content: 'Hermes agent authenticates to the production payment gateway using mTLS client certificates and OAuth2 JWT tokens on port 443.',
+    type: 'semantic',
+    status: 'active',
+    source: 'auto_ingest',
+    confidence: 0.84,
+    is_pinned: 0,
+    supersedes_id: null,
+    superseded_by_id: null,
+    valid_from: '2026-11-15T11:20:00Z',
+    valid_until: null,
+    expires_at: null,
+    access_count: 3,
+    last_accessed_at: '2026-11-15T11:20:00Z',
+  },
+  {
+    id: 'mem-global-dup-11',
+    workspace: 'global',
+    content: 'Dual-Transport MCP server exposes Streamable HTTP at /mcp and SSE at /sse + /messages with Bearer token authentication.',
+    type: 'semantic',
+    status: 'active',
+    source: 'auto_ingest',
+    confidence: 0.82,
+    is_pinned: 0,
+    supersedes_id: null,
+    superseded_by_id: null,
+    valid_from: '2026-11-14T15:00:00Z',
+    valid_until: null,
+    expires_at: null,
+    access_count: 4,
+    last_accessed_at: '2026-11-14T15:00:00Z',
+  },
+  {
+    id: 'mem-global-stale-12',
+    workspace: 'global',
+    content: 'Temporary staging reverse-proxy IPv4 allowlist configured for 10.24.0.18 during initial v0.8 cluster bring-up.',
+    type: 'semantic',
+    status: 'active',
+    source: 'agent_observation',
+    confidence: 0.76,
+    is_pinned: 0,
+    supersedes_id: null,
+    superseded_by_id: null,
+    valid_from: '2026-09-10T08:00:00Z',
+    valid_until: null,
+    expires_at: null,
+    access_count: 1,
+    last_accessed_at: '2026-09-12T08:00:00Z',
+  },
+  {
+    id: 'mem-ops-stale-13',
+    workspace: 'ops-agent',
+    content: 'Old staging Prometheus scrape interval temporarily raised to 45s while debugging high CPU telemetry.',
+    type: 'semantic',
+    status: 'active',
+    source: 'agent_observation',
+    confidence: 0.74,
+    is_pinned: 0,
+    supersedes_id: null,
+    superseded_by_id: null,
+    valid_from: '2026-09-18T12:00:00Z',
+    valid_until: null,
+    expires_at: null,
+    access_count: 2,
+    last_accessed_at: '2026-09-20T12:00:00Z',
+  },
+  {
+    id: 'mem-hermes-exp-14',
+    workspace: 'hermes',
+    content: 'Short-lived canary settlement batch verification window active for asia-southeast1 hotfix validation.',
+    type: 'episodic',
+    status: 'active',
+    source: 'auto_ingest',
+    confidence: 0.83,
+    is_pinned: 0,
+    supersedes_id: null,
+    superseded_by_id: null,
+    valid_from: '2026-11-16T02:00:00Z',
+    valid_until: null,
+    expires_at: new Date(Date.now() + 18 * 3600 * 1000).toISOString(),
+    access_count: 2,
+    last_accessed_at: '2026-11-16T02:30:00Z',
+  },
 ];
 
 const INITIAL_NODES: GraphNode[] = [
@@ -356,6 +559,24 @@ const INITIAL_TELEMETRY: TelemetryLogItem[] = [
     distilled_tokens: 245,
     latency_ms: 13.7,
     created_at: '2026-11-16T04:35:00Z',
+  },
+  {
+    id: 107,
+    workspace: 'ops-agent',
+    query: 'Container rollback policy when /health probe returns HTTP 503 during canary rollout',
+    raw_tokens: 1710,
+    distilled_tokens: 215,
+    latency_ms: 12.6,
+    created_at: '2026-11-16T04:42:00Z',
+  },
+  {
+    id: 108,
+    workspace: 'global',
+    query: 'Token ceiling and learn_from_mistake anti-pattern ordering in core-directives',
+    raw_tokens: 1580,
+    distilled_tokens: 190,
+    latency_ms: 11.4,
+    created_at: '2026-11-16T04:48:00Z',
   },
 ];
 
@@ -618,6 +839,7 @@ export const engramApi = {
     confidence?: number;
     is_pinned?: boolean;
     supersedes_id?: string | null;
+    skip_activity_log?: boolean;
   }): Promise<{ action: string; memory: MemoryRecord }> {
     const remote = await tryBackendFetch<{ action: string; memory: MemoryRecord }>('/api/v1/memories', {
       method: 'POST',
@@ -626,7 +848,8 @@ export const engramApi = {
     if (remote) return remote;
 
     const memories = loadStore<MemoryRecord[]>(STORAGE_KEY_MEMORIES, INITIAL_MEMORIES);
-    const sanitizedContent = scrubSecretsText(payload.content.trim()).scrubbed;
+    const scrubResult = scrubSecretsText(payload.content.trim());
+    const sanitizedContent = scrubResult.scrubbed;
     const nowIso = new Date().toISOString();
     const newId = `mem-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -677,7 +900,24 @@ export const engramApi = {
       saveStore(STORAGE_KEY_EDGES, edges);
     }
 
-    return { action: payload.supersedes_id ? 'superseded' : 'inserted', memory: record };
+    const actionName = payload.supersedes_id ? 'superseded' : 'inserted';
+    if (!payload.skip_activity_log) {
+      appendActivityJob({
+        job_id: `job_${Math.random().toString(36).slice(2, 14)}`,
+        job_type: 'store_memory',
+        workspace: record.workspace,
+        status: 'completed',
+        summary: `${actionName} ${record.type} memory (${record.source})`,
+        detail: record.content.slice(0, 240),
+        items_processed: 1,
+        secrets_redacted: scrubResult.redactionCount,
+        latency_ms: Number((14.2 + Math.random() * 12).toFixed(1)),
+        created_at: nowIso,
+        completed_at: nowIso,
+      });
+    }
+
+    return { action: actionName, memory: record };
   },
 
   async updateMemory(
@@ -1220,10 +1460,444 @@ export const engramApi = {
     };
     saveStore(STORAGE_KEY_SETTINGS, updated);
 
+    appendActivityJob({
+      job_id: `job_${Math.random().toString(36).slice(2, 14)}`,
+      job_type: 'reindex_all',
+      workspace: 'global',
+      status: 'completed',
+      summary: `Re-indexed ${activeCount}/${activeCount} vectors @ ${targetDim}d`,
+      detail: `vec_memories rebuilt at ${targetDim}d embedding vector space.`,
+      items_processed: activeCount,
+      secrets_redacted: 0,
+      latency_ms: Number((180 + activeCount * 14.5).toFixed(1)),
+      created_at: statusObj.started_at || new Date().toISOString(),
+      completed_at: statusObj.completed_at,
+    });
+
     return {
       status: 'reindexed',
       target_dimension: targetDim,
       reindex_status: statusObj,
     };
+  },
+
+  async getDirectivesPreview(
+    workspace: string = 'global',
+    budgetLimit: number = 1500
+  ): Promise<DirectivesPreviewResponse> {
+    const cleanWs = (workspace || 'global').trim() || 'global';
+    const remote = await tryBackendFetch<DirectivesPreviewResponse>(
+      `/api/v1/directives/preview?workspace=${encodeURIComponent(cleanWs)}&budget_limit=${budgetLimit}`
+    );
+    if (remote) return remote;
+
+    const memories = loadStore<MemoryRecord[]>(STORAGE_KEY_MEMORIES, INITIAL_MEMORIES);
+    return buildDirectivesPreviewPayload(memories, cleanWs, budgetLimit);
+  },
+
+  async getIntegrationsStatus(): Promise<IntegrationsStatusResponse> {
+    const remote = await tryBackendFetch<IntegrationsStatusResponse>('/api/v1/integrations/status');
+    if (remote) return remote;
+
+    const currentSettings = loadStore<SettingsPayload>(STORAGE_KEY_SETTINGS, INITIAL_SETTINGS);
+    return {
+      service: 'Engram Dual-Transport MCP Server',
+      mcp_streamable_path: '/mcp',
+      mcp_sse_path: '/sse',
+      mcp_messages_path: '/messages',
+      ingest_webhook_path: '/api/v1/ingest',
+      auto_ingest_enabled: Boolean(currentSettings.auto_ingest_enabled),
+      mcp_key_hint: 'sk-m...cret',
+      registered_tools: [
+        'recall_memory',
+        'store_memory',
+        'learn_from_mistake',
+        'supersede_memory',
+      ],
+      registered_resources: [
+        'memory://core-directives/{workspace}',
+        'memory://session-summary/{workspace}',
+      ],
+    };
+  },
+
+  async probeMcpTransport(transport: McpTransportKind = 'streamable_http'): Promise<IntegrationProbeResponse> {
+    const remote = await tryBackendFetch<IntegrationProbeResponse>('/api/v1/integrations/probe', {
+      method: 'POST',
+      body: JSON.stringify({ transport }),
+    });
+    if (remote) return remote;
+
+    await new Promise((r) => setTimeout(r, 140));
+    const currentSettings = loadStore<SettingsPayload>(STORAGE_KEY_SETTINGS, INITIAL_SETTINGS);
+    const ingestOpen = Boolean(currentSettings.auto_ingest_enabled);
+
+    return {
+      ok: true,
+      checked_at: new Date().toISOString(),
+      transport,
+      overall_latency_ms: 21.4,
+      endpoints: [
+        {
+          id: 'mcp-http',
+          label: 'MCP Streamable HTTP',
+          method: 'POST',
+          path: '/mcp',
+          status: 'online',
+          http_status: 200,
+          latency_ms: 6.2,
+          detail: 'FastMCP streamable HTTP transport mounted with Bearer Auth guard.',
+        },
+        {
+          id: 'mcp-sse',
+          label: 'MCP Legacy SSE + Messages',
+          method: 'GET',
+          path: '/sse',
+          status: 'online',
+          http_status: 200,
+          latency_ms: 7.4,
+          detail: 'SSE event stream (/sse) + JSON-RPC channel (/messages) ready.',
+        },
+        {
+          id: 'ingest-webhook',
+          label: 'Auto-Ingest Webhook',
+          method: 'POST',
+          path: '/api/v1/ingest',
+          status: ingestOpen ? 'online' : 'locked',
+          http_status: ingestOpen ? 202 : 403,
+          latency_ms: 4.1,
+          detail: ingestOpen
+            ? 'Accepting conversation transcripts for async extraction.'
+            : 'Locked by Settings toggle (HTTP 403 Forbidden).',
+        },
+        {
+          id: 'health',
+          label: 'Container & sqlite-vec WAL',
+          method: 'GET',
+          path: '/health',
+          status: 'online',
+          http_status: 200,
+          latency_ms: 3.7,
+          detail: 'SQLite WAL + vec0 extension verified.',
+        },
+      ],
+    };
+  },
+
+  async getWorkerActivity(
+    workspace?: string,
+    jobType?: string
+  ): Promise<WorkerActivityResponse> {
+    const search = new URLSearchParams();
+    if (workspace && workspace !== 'all') search.set('workspace', workspace);
+    if (jobType && jobType !== 'all') search.set('job_type', jobType);
+    const qs = search.toString();
+
+    const remote = await tryBackendFetch<WorkerActivityResponse>(
+      `/api/v1/activity${qs ? `?${qs}` : ''}`
+    );
+    if (remote) return remote;
+
+    const allJobs = loadStore<WorkerJobRecord[]>(STORAGE_KEY_ACTIVITY_JOBS, INITIAL_ACTIVITY_JOBS);
+    const filtered = filterWorkerJobs(allJobs, {
+      workspace: workspace || 'all',
+      jobType: (jobType as WorkerJobType | 'all') || 'all',
+    });
+    const meta = loadStore<ActivityMetaState>(STORAGE_KEY_ACTIVITY_META, INITIAL_ACTIVITY_META);
+    const currentSettings = loadStore<SettingsPayload>(STORAGE_KEY_SETTINGS, INITIAL_SETTINGS);
+
+    return {
+      worker_running: true,
+      queue_depth: currentSettings.reindex_status.running ? 1 : 0,
+      jobs_processed: Math.max(allJobs.length, 42 + (allJobs.length - INITIAL_ACTIVITY_JOBS.length)),
+      ttl_sweeps_count: meta.ttl_sweeps_count,
+      expired_cleaned_total: meta.expired_cleaned_total,
+      auto_ingest_enabled: Boolean(currentSettings.auto_ingest_enabled),
+      reindex_status: currentSettings.reindex_status,
+      jobs: filtered,
+    };
+  },
+
+  async runTtlSweep(): Promise<{
+    status: string;
+    expired_cleaned: number;
+    swept_at: string;
+  }> {
+    const remote = await tryBackendFetch<{
+      status: string;
+      expired_cleaned: number;
+      swept_at: string;
+    }>('/api/v1/activity/ttl-sweep', {
+      method: 'POST',
+    });
+    if (remote) return remote;
+
+    const memories = loadStore<MemoryRecord[]>(STORAGE_KEY_MEMORIES, INITIAL_MEMORIES);
+    const nowIso = new Date().toISOString();
+    const expired = memories.filter(
+      (m) => m.expires_at !== null && m.expires_at <= nowIso
+    );
+    const remaining = memories.filter(
+      (m) => m.expires_at === null || m.expires_at > nowIso
+    );
+    if (expired.length > 0) {
+      saveStore(STORAGE_KEY_MEMORIES, remaining);
+    }
+
+    const meta = loadStore<ActivityMetaState>(STORAGE_KEY_ACTIVITY_META, INITIAL_ACTIVITY_META);
+    const updatedMeta: ActivityMetaState = {
+      ttl_sweeps_count: meta.ttl_sweeps_count + 1,
+      expired_cleaned_total: meta.expired_cleaned_total + expired.length,
+    };
+    saveStore(STORAGE_KEY_ACTIVITY_META, updatedMeta);
+
+    appendActivityJob({
+      job_id: `job_${Math.random().toString(36).slice(2, 14)}`,
+      job_type: 'ttl_cleanup',
+      workspace: 'global',
+      status: 'completed',
+      summary: `TTL sweep removed ${expired.length} expired episodic record(s)`,
+      detail: `Checked expires_at <= ${nowIso}; removed ${expired.length} expired rows from memories + vec_memories.`,
+      items_processed: expired.length,
+      secrets_redacted: 0,
+      latency_ms: Number((3.8 + Math.random() * 3.1).toFixed(1)),
+      created_at: nowIso,
+      completed_at: nowIso,
+    });
+
+    return {
+      status: 'completed',
+      expired_cleaned: expired.length,
+      swept_at: nowIso,
+    };
+  },
+
+  async simulateWebhookIngest(payload: {
+    workspace: string;
+    transcript: string;
+  }): Promise<{
+    status: string;
+    job_id: string;
+    extracted_count: number;
+    secrets_redacted: number;
+  }> {
+    const cleanWs = (payload.workspace && payload.workspace !== 'all' ? payload.workspace : 'global').trim() || 'global';
+    const lines = payload.transcript
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    const messages = lines.map((line) => {
+      const match = line.match(/^(user|assistant|system)\s*:\s*(.*)$/i);
+      if (match) {
+        return { role: match[1].toLowerCase(), content: match[2] };
+      }
+      return { role: 'user', content: line };
+    });
+
+    const remote = await tryBackendFetch<{
+      status: string;
+      job_id: string;
+    }>('/api/v1/ingest', {
+      method: 'POST',
+      body: JSON.stringify({ workspace: cleanWs, messages }),
+    });
+    if (remote) {
+      return {
+        status: remote.status || 'queued',
+        job_id: remote.job_id,
+        extracted_count: messages.length,
+        secrets_redacted: 0,
+      };
+    }
+
+    const t0 = performance.now();
+    const candidates = extractMemoriesFromTranscriptText(payload.transcript);
+    let totalRedacted = 0;
+
+    for (const item of candidates) {
+      totalRedacted += item.secrets_redacted;
+      await this.createMemory({
+        workspace: cleanWs,
+        content: item.content,
+        type: item.type,
+        source: 'ingest_webhook',
+        confidence: item.confidence,
+        is_pinned: item.is_pinned,
+        skip_activity_log: true,
+      });
+    }
+
+    const nowIso = new Date().toISOString();
+    const jobId = `job_${Math.random().toString(36).slice(2, 14)}`;
+    const latencyMs = Number(Math.max(16.4, performance.now() - t0 + 24.5).toFixed(1));
+
+    appendActivityJob({
+      job_id: jobId,
+      job_type: 'ingest_messages',
+      workspace: cleanWs,
+      status: 'completed',
+      summary: `Extracted ${candidates.length} memories from ${messages.length} conversation turns`,
+      detail: `POST /api/v1/ingest -> workspace=${cleanWs} • extracted=${candidates.length} • redacted=${totalRedacted}`,
+      items_processed: candidates.length,
+      secrets_redacted: totalRedacted,
+      latency_ms: latencyMs,
+      created_at: nowIso,
+      completed_at: nowIso,
+    });
+
+    return {
+      status: 'completed',
+      job_id: jobId,
+      extracted_count: candidates.length,
+      secrets_redacted: totalRedacted,
+    };
+  },
+
+  async getHygieneAudit(
+    workspace: string = 'all',
+    staleDays: number = 30
+  ): Promise<HygieneAuditResponse> {
+    const cleanWs = (workspace || 'all').trim() || 'all';
+    const remote = await tryBackendFetch<HygieneAuditResponse>(
+      `/api/v1/hygiene/audit?workspace=${encodeURIComponent(cleanWs)}&stale_days=${staleDays}`
+    );
+    if (remote) return remote;
+
+    const memories = loadStore<MemoryRecord[]>(STORAGE_KEY_MEMORIES, INITIAL_MEMORIES);
+    const currentSettings = loadStore<SettingsPayload>(STORAGE_KEY_SETTINGS, INITIAL_SETTINGS);
+    const dismissed = loadStore<string[]>(STORAGE_KEY_HYGIENE_DISMISSED, []);
+
+    return analyzeMemoryHygiene(memories, {
+      workspace: cleanWs,
+      dedupThreshold: currentSettings.similarity_dedup_threshold ?? 0.85,
+      staleDaysThreshold: staleDays,
+      dismissedIssueIds: dismissed,
+    });
+  },
+
+  async resolveHygieneIssue(payload: {
+    action:
+      | 'supersede_secondary'
+      | 'merge_keep_primary'
+      | 'archive_stale'
+      | 'extend_ttl'
+      | 'pin_keep'
+      | 'dismiss';
+    issue_id: string;
+    primary_id: string;
+    secondary_id?: string | null;
+    merged_content?: string | null;
+    workspace?: string;
+  }): Promise<{ status: string; resolved_at: string }> {
+    const remote = await tryBackendFetch<{ status: string; resolved_at: string }>(
+      '/api/v1/hygiene/resolve',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+    if (remote) return remote;
+
+    const nowIso = new Date().toISOString();
+    if (payload.action === 'dismiss') {
+      const dismissed = loadStore<string[]>(STORAGE_KEY_HYGIENE_DISMISSED, []);
+      if (!dismissed.includes(payload.issue_id)) {
+        dismissed.push(payload.issue_id);
+        saveStore(STORAGE_KEY_HYGIENE_DISMISSED, dismissed);
+      }
+      return { status: 'dismissed', resolved_at: nowIso };
+    }
+
+    const memories = loadStore<MemoryRecord[]>(STORAGE_KEY_MEMORIES, INITIAL_MEMORIES);
+    const updated = memories.map((m) => {
+      if (m.id === payload.primary_id) {
+        if (payload.action === 'archive_stale') {
+          return { ...m, status: 'archived' as MemoryStatus, valid_until: nowIso };
+        }
+        if (payload.action === 'extend_ttl') {
+          return {
+            ...m,
+            expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+            last_accessed_at: nowIso,
+          };
+        }
+        if (payload.action === 'pin_keep') {
+          return {
+            ...m,
+            is_pinned: 1,
+            expires_at: null,
+            last_accessed_at: nowIso,
+          };
+        }
+        return {
+          ...m,
+          ...(payload.merged_content && payload.merged_content.trim()
+            ? { content: scrubSecretsText(payload.merged_content.trim()).scrubbed }
+            : {}),
+          last_accessed_at: nowIso,
+        };
+      }
+
+      if (
+        payload.secondary_id &&
+        m.id === payload.secondary_id &&
+        (payload.action === 'supersede_secondary' || payload.action === 'merge_keep_primary')
+      ) {
+        return {
+          ...m,
+          status: 'superseded' as MemoryStatus,
+          superseded_by_id: payload.primary_id,
+          valid_until: nowIso,
+        };
+      }
+      return m;
+    });
+
+    saveStore(STORAGE_KEY_MEMORIES, updated);
+
+    appendActivityJob({
+      job_id: `job_${Math.random().toString(36).slice(2, 14)}`,
+      job_type: 'store_memory',
+      workspace: payload.workspace || 'global',
+      status: 'completed',
+      summary: `hygiene resolved (${payload.action}) on ${payload.primary_id}`,
+      detail: `Issue ${payload.issue_id} resolved • primary=${payload.primary_id}${
+        payload.secondary_id ? ` • superseded=${payload.secondary_id}` : ''
+      }`,
+      items_processed: payload.secondary_id ? 2 : 1,
+      secrets_redacted: 0,
+      latency_ms: 12.4,
+      created_at: nowIso,
+      completed_at: nowIso,
+    });
+
+    return { status: 'resolved', resolved_at: nowIso };
+  },
+
+  async getTokenAnalytics(params: {
+    workspace?: string;
+    modelId?: ModelPricingProfileId;
+    sessionTurns?: number;
+  } = {}): Promise<AnalyticsSummaryResponse> {
+    const cleanWs = (params.workspace || 'all').trim() || 'all';
+    const modelId = params.modelId || 'claude_sonnet_4';
+    const sessionTurns = params.sessionTurns ?? 20;
+
+    const remote = await tryBackendFetch<AnalyticsSummaryResponse>(
+      `/api/v1/analytics/summary?workspace=${encodeURIComponent(cleanWs)}&model_id=${encodeURIComponent(modelId)}&session_turns=${sessionTurns}`
+    );
+    if (remote) return remote;
+
+    const telemetry = loadStore<TelemetryLogItem[]>(STORAGE_KEY_TELEMETRY, INITIAL_TELEMETRY);
+    const memories = loadStore<MemoryRecord[]>(STORAGE_KEY_MEMORIES, INITIAL_MEMORIES);
+
+    return buildTokenAnalytics({
+      telemetry,
+      memories,
+      workspace: cleanWs,
+      modelId,
+      sessionTurns,
+    });
   },
 };

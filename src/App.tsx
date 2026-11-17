@@ -8,19 +8,26 @@ import {
   Globe,
   Home,
   Moon,
+  Plug2,
   Plus,
   Search,
   Settings,
   Sun,
 } from 'lucide-react';
 import { engramApi } from './api/client';
+import { ActivityTab } from './components/ActivityTab';
+import { AnalyticsTab } from './components/AnalyticsTab';
 import { CommandPalette } from './components/CommandPalette';
+import { DirectivesTab } from './components/DirectivesTab';
 import { ExplorerTab } from './components/ExplorerTab';
 import { GraphTab } from './components/GraphTab';
+import { HygieneTab } from './components/HygieneTab';
+import { IntegrationsTab } from './components/IntegrationsTab';
 import { OverviewTab } from './components/OverviewTab';
 import { PlaygroundTab } from './components/PlaygroundTab';
 import { SettingsTab } from './components/SettingsTab';
 import { CustomSelect } from './components/ui/CustomSelect';
+import { EngramLogo } from './components/ui/EngramLogo';
 import { getDictionary, Locale } from './i18n';
 import {
   GraphResponse,
@@ -197,8 +204,18 @@ export default function App() {
         return { group: 'Memory Hub', page: 'Knowledge Graph' };
       case 'explorer':
         return { group: 'Memory Hub', page: 'Memory Explorer' };
+      case 'directives':
+        return { group: 'Memory Hub', page: 'Core Directives' };
       case 'playground':
         return { group: 'Analyze', page: 'Retrieval Playground' };
+      case 'activity':
+        return { group: 'Analyze', page: 'Worker Activity' };
+      case 'hygiene':
+        return { group: 'Analyze', page: 'Hygiene & Conflicts' };
+      case 'analytics':
+        return { group: 'Analyze', page: 'Token & Cost Analytics' };
+      case 'integrations':
+        return { group: 'System', page: 'MCP Integrations' };
       case 'settings':
         return { group: 'System', page: 'Settings' };
       default:
@@ -252,15 +269,7 @@ export default function App() {
               onClick={() => navigateTab('overview')}
               className="flex items-center gap-2 cursor-pointer group"
             >
-              <div
-                className="w-6 h-6 rounded-[4px] flex items-center justify-center font-extrabold text-xs tracking-tighter shrink-0"
-                style={{
-                  backgroundColor: 'var(--accent-primary)',
-                  color: 'var(--accent-primary-fg)',
-                }}
-              >
-                E
-              </div>
+              <EngramLogo size={24} className="transition-transform duration-150 group-hover:scale-105" />
               <span
                 className="text-sm font-semibold tracking-tight"
                 style={{ color: 'var(--text-primary)' }}
@@ -354,7 +363,9 @@ export default function App() {
                   className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[4px] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
                   style={{
                     color:
-                      activeTab === 'graph' || activeTab === 'explorer'
+                      activeTab === 'graph' ||
+                      activeTab === 'explorer' ||
+                      activeTab === 'directives'
                         ? 'var(--text-primary)'
                         : 'var(--text-secondary)',
                   }}
@@ -428,11 +439,37 @@ export default function App() {
                         )}
                       </button>
                     </li>
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => navigateTab('directives')}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[4px] text-left transition-colors cursor-pointer ${
+                          activeTab === 'directives'
+                            ? 'font-medium'
+                            : 'hover:bg-[var(--bg-elevated)]'
+                        }`}
+                        style={{
+                          backgroundColor:
+                            activeTab === 'directives'
+                              ? 'var(--bg-sidebar-active)'
+                              : 'transparent',
+                          color:
+                            activeTab === 'directives'
+                              ? 'var(--text-primary)'
+                              : 'var(--text-secondary)',
+                        }}
+                      >
+                        <span>Core Directives</span>
+                        <span className="font-mono-data text-[10px] opacity-60">
+                          {memories.filter((m) => m.status === 'active' && (m.is_pinned === 1 || m.type === 'procedural')).length}
+                        </span>
+                      </button>
+                    </li>
                   </ul>
                 )}
               </li>
 
-              {/* 3. Analyze Tree Group (/playground) */}
+              {/* 3. Analyze Tree Group (/playground, /activity, /hygiene) */}
               <li>
                 <button
                   type="button"
@@ -440,7 +477,10 @@ export default function App() {
                   className="w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-[4px] hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
                   style={{
                     color:
-                      activeTab === 'playground'
+                      activeTab === 'playground' ||
+                      activeTab === 'activity' ||
+                      activeTab === 'hygiene' ||
+                      activeTab === 'analytics'
                         ? 'var(--text-primary)'
                         : 'var(--text-secondary)',
                   }}
@@ -481,11 +521,110 @@ export default function App() {
                         <span>Retrieval Playground</span>
                       </button>
                     </li>
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => navigateTab('activity')}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[4px] text-left transition-colors cursor-pointer ${
+                          activeTab === 'activity'
+                            ? 'font-medium'
+                            : 'hover:bg-[var(--bg-elevated)]'
+                        }`}
+                        style={{
+                          backgroundColor:
+                            activeTab === 'activity'
+                              ? 'var(--bg-sidebar-active)'
+                              : 'transparent',
+                          color:
+                            activeTab === 'activity'
+                              ? 'var(--text-primary)'
+                              : 'var(--text-secondary)',
+                        }}
+                      >
+                        <span>Worker Activity</span>
+                        <span className="font-mono-data text-[10px] opacity-60">
+                          {stats?.worker.queue_depth ?? 0}
+                        </span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => navigateTab('hygiene')}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[4px] text-left transition-colors cursor-pointer ${
+                          activeTab === 'hygiene'
+                            ? 'font-medium'
+                            : 'hover:bg-[var(--bg-elevated)]'
+                        }`}
+                        style={{
+                          backgroundColor:
+                            activeTab === 'hygiene'
+                              ? 'var(--bg-sidebar-active)'
+                              : 'transparent',
+                          color:
+                            activeTab === 'hygiene'
+                              ? 'var(--text-primary)'
+                              : 'var(--text-secondary)',
+                        }}
+                      >
+                        <span>Hygiene &amp; Conflicts</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => navigateTab('analytics')}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-[4px] text-left transition-colors cursor-pointer ${
+                          activeTab === 'analytics'
+                            ? 'font-medium'
+                            : 'hover:bg-[var(--bg-elevated)]'
+                        }`}
+                        style={{
+                          backgroundColor:
+                            activeTab === 'analytics'
+                              ? 'var(--bg-sidebar-active)'
+                              : 'transparent',
+                          color:
+                            activeTab === 'analytics'
+                              ? 'var(--text-primary)'
+                              : 'var(--text-secondary)',
+                        }}
+                      >
+                        <span>Token &amp; Cost Analytics</span>
+                      </button>
+                    </li>
                   </ul>
                 )}
               </li>
 
-              {/* 4. Settings (/settings) */}
+              {/* 4. MCP & Agent Integrations (/integrations) */}
+              <li>
+                <button
+                  type="button"
+                  onClick={() => navigateTab('integrations')}
+                  className={`w-full flex items-center justify-between gap-2.5 px-2.5 py-1.5 rounded-[4px] transition-colors cursor-pointer ${
+                    activeTab === 'integrations'
+                      ? 'font-medium'
+                      : 'hover:bg-[var(--bg-elevated)]'
+                  }`}
+                  style={{
+                    backgroundColor:
+                      activeTab === 'integrations' ? 'var(--bg-sidebar-active)' : 'transparent',
+                    color:
+                      activeTab === 'integrations'
+                        ? 'var(--text-primary)'
+                        : 'var(--text-secondary)',
+                  }}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Plug2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>MCP Integrations</span>
+                  </span>
+                  <span className="font-mono-data text-[10px] opacity-60">2</span>
+                </button>
+              </li>
+
+              {/* 5. Settings (/settings) */}
               <li>
                 <button
                   type="button"
@@ -687,7 +826,7 @@ export default function App() {
                 className="flex items-center gap-2 hover:opacity-85 transition-opacity cursor-pointer shrink-0"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                <span className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-400 shrink-0" />
+                <EngramLogo size={18} />
                 <span className="font-medium">Engram</span>
               </button>
 
@@ -778,6 +917,16 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'directives' && (
+              <DirectivesTab
+                memories={memories}
+                activeWorkspace={activeWorkspace}
+                workspaces={availableWorkspaces}
+                dict={dict}
+                onRefresh={refreshAll}
+              />
+            )}
+
             {activeTab === 'graph' && (
               <GraphTab graph={graph} memories={memories} dict={dict} />
             )}
@@ -788,6 +937,43 @@ export default function App() {
                 workspaces={availableWorkspaces}
                 dict={dict}
                 onAfterQuery={refreshAll}
+              />
+            )}
+
+            {activeTab === 'activity' && (
+              <ActivityTab
+                activeWorkspace={activeWorkspace}
+                workspaces={availableWorkspaces}
+                dict={dict}
+                onRefresh={refreshAll}
+                onSelectWorkspace={(ws) => setWorkspaceRoute(ws)}
+              />
+            )}
+
+            {activeTab === 'hygiene' && (
+              <HygieneTab
+                activeWorkspace={activeWorkspace}
+                dict={dict}
+                onRefresh={refreshAll}
+              />
+            )}
+
+            {activeTab === 'analytics' && (
+              <AnalyticsTab
+                activeWorkspace={activeWorkspace}
+                workspaces={availableWorkspaces}
+                dict={dict}
+                onSelectWorkspace={(ws) => setWorkspaceRoute(ws)}
+                onNavigateTab={(tab) => navigateTab(tab)}
+              />
+            )}
+
+            {activeTab === 'integrations' && (
+              <IntegrationsTab
+                activeWorkspace={activeWorkspace}
+                workspaces={availableWorkspaces}
+                settings={settings}
+                dict={dict}
               />
             )}
 

@@ -10,8 +10,13 @@
     "navigation": "Console Views",
     "overview": "Overview & Telemetry",
     "explorer": "Memory Explorer",
+    "directives": "Core Directives",
     "graph": "Knowledge Graph",
     "playground": "Retrieval Playground",
+    "activity": "Worker Activity",
+    "hygiene": "Hygiene & Conflicts",
+    "analytics": "Token & Cost Analytics",
+    "integrations": "MCP Integrations",
     "settings": "Settings & Providers",
     "embeddingMode": "Embedding Engine",
     "externalMode": "External API (0 MB RAM)",
@@ -183,5 +188,132 @@
       "enabledDesc": "Endpoint is live (HTTP 202 Accepted). External orchestrators can stream raw chat transcripts for background memory extraction.",
       "disabledDesc": "Endpoint is locked (HTTP 403 Forbidden). Enable this toggle to accept external conversation transcripts."
     }
+  },
+  "directives": {
+    "title": "Core Directives & Session Preview",
+    "subtitle": "Manage always-on agent rules, learn_from_mistake anti-patterns, and inspect exact MCP baseline prompt injections.",
+    "addBtn": "Add Directive",
+    "searchPlaceholder": "Filter directives or anti-patterns...",
+    "copyPromptBtn": "Copy Prompt",
+    "copiedPromptBtn": "Copied",
+    "tabs": {
+      "all": "All",
+      "antiPattern": "Anti-Patterns",
+      "pinnedRule": "Pinned Rules",
+      "procedural": "Procedural"
+    },
+    "kpi": {
+      "activeDirectives": "Active Directives",
+      "antiPatterns": "Anti-Pattern Guardrails",
+      "coreTokens": "Core Directives Injection",
+      "sessionTokens": "Session Briefing Budget"
+    },
+    "preview": {
+      "title": "Live MCP Prompt Injection Preview",
+      "subtitle": "Exact baseline payload delivered to connected agents before task recall.",
+      "coreTab": "core-directives",
+      "sessionTab": "session-summary",
+      "budgetLabel": "Baseline Token Budget",
+      "healthy": "Healthy • Lean Context",
+      "warning": "Moderate • Monitor Size",
+      "heavy": "Heavy • Trim Directives"
+    },
+    "empty": "No pinned rules or procedural directives match the active workspace filter."
+  },
+  "integrations": {
+    "title": "MCP & Agent Integrations",
+    "subtitle": "Generate ready-to-paste MCP configs for Hermes Agent, Claude Desktop, Cursor, Windsurf, Continue, and verify dual-transport endpoint health.",
+    "probeBtn": "Run Endpoint Probe",
+    "probingBtn": "Probing Transports...",
+    "copyBtn": "Copy Config",
+    "copiedBtn": "Copied",
+    "kpi": {
+      "transports": "Dual MCP Transports",
+      "authBoundary": "Bearer Auth Guard",
+      "webhook": "Auto-Ingest Webhook",
+      "capabilities": "MCP Surface Area"
+    },
+    "generator": {
+      "title": "Client Config Generator",
+      "subtitle": "Pick your AI IDE or agent runtime to generate exact connection JSON/CLI.",
+      "baseUrlLabel": "Engram Server Base URL",
+      "transportLabel": "Transport Protocol",
+      "workspaceLabel": "Target Workspace",
+      "tokenLabel": "Auth Token Placeholder",
+      "rulesTitle": "Recommended System Prompt / AGENTS.md Protocol"
+    },
+    "probe": {
+      "title": "Transport Health & Capabilities",
+      "subtitle": "Verify live endpoints and click any registered MCP tool or resource to inspect its schema.",
+      "toolsHeading": "Registered MCP Tools (4)",
+      "resourcesHeading": "Registered MCP Resources (2)"
+    }
+  },
+  "activity": {
+    "title": "Ingest & Worker Activity",
+    "subtitle": "Inspect the async asyncio.Queue pipeline, webhook transcript extraction jobs, secret scrubbing counts, vector re-indexing runs, and TTL sweeps.",
+    "runTtlBtn": "Run TTL Sweep",
+    "runningTtlBtn": "Sweeping...",
+    "reindexBtn": "Trigger Re-index",
+    "simulateIngestBtn": "Simulate Transcript Ingest",
+    "searchPlaceholder": "Filter jobs by ID, summary, workspace, or payload...",
+    "kpi": {
+      "workerLoop": "Worker Loop & Queue",
+      "jobsProcessed": "Jobs Processed & Speed",
+      "webhookStatus": "Auto-Ingest Webhook",
+      "vectorMaintenance": "Re-index & TTL Sweeps"
+    },
+    "tabs": {
+      "all": "All Jobs",
+      "store_memory": "store_memory",
+      "ingest_messages": "ingest_messages",
+      "reindex_all": "reindex_all",
+      "ttl_cleanup": "ttl_cleanup"
+    },
+    "empty": "No background worker jobs match the active filter."
+  },
+  "hygiene": {
+    "title": "Memory Hygiene & Conflicts",
+    "subtitle": "Audit contradictory rules, near-duplicate semantic overlaps, stale unpinned records, and expiring episodic memories across workspaces.",
+    "runAuditBtn": "Run Hygiene Audit",
+    "auditingBtn": "Scanning...",
+    "searchPlaceholder": "Filter issues by memory ID, workspace, or reason...",
+    "kpi": {
+      "healthScore": "Memory Health Score",
+      "conflicts": "Policy & Config Conflicts",
+      "duplicates": "Near-Duplicate Overlaps",
+      "staleExpiring": "Stale / Expiring TTL"
+    },
+    "tabs": {
+      "all": "All Findings",
+      "conflict": "Conflicts",
+      "duplicate": "Near-Duplicates",
+      "stale": "Stale Unused",
+      "expiring": "Expiring TTL"
+    },
+    "empty": "Workspace memory hygiene is clean — zero conflicts, duplicates, or stale records detected."
+  },
+  "analytics": {
+    "title": "Token & Cost Analytics",
+    "subtitle": "Measure real token compression, USD savings across LLM pricing tiers, and why short focused sessions with Engram outperform huge raw chat histories.",
+    "exportCsvBtn": "Export CSV",
+    "refreshBtn": "Refresh Analytics",
+    "searchPlaceholder": "Filter telemetry runs by query, ID, or workspace...",
+    "kpi": {
+      "tokensSaved": "Total Tokens Saved",
+      "costSaved": "Estimated USD Saved",
+      "compression": "Avg Context Compression",
+      "sessionRoi": "Short-Session ROI"
+    },
+    "simulator": {
+      "title": "Short-Session vs. Long-Context Bloat Simulator",
+      "subtitle": "Compare cumulative input tokens over N turns when replaying full chat history vs. lean Core Directives + Distilled Recall.",
+      "withoutLabel": "Naive Full-History Chat Replay",
+      "withLabel": "Short Session + Engram Distiller",
+      "turnsLabel": "Conversation Turns"
+    },
+    "workspaceTitle": "Workspace Token & Cost Breakdown",
+    "workspaceSubtitle": "Token compression and estimated savings grouped by isolated agent workspace.",
+    "empty": "No recall telemetry runs match the active filter criteria."
   }
 }
