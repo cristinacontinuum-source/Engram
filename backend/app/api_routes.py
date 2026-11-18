@@ -1,10 +1,12 @@
 import json
 import logging
+import re
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Literal, Optional
 
+import httpx
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -106,6 +108,12 @@ class TestLLMRequest(BaseModel):
     llm_api_key: Optional[str] = None
     fast_model: Optional[str] = None
     llm_model: Optional[str] = None
+
+
+class FetchModelsRequest(BaseModel):
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    kind: Literal["llm", "embedding"] = "llm"
 
 
 class ReindexRequest(BaseModel):
@@ -843,6 +851,152 @@ async def test_llm_provider(req: TestLLMRequest) -> Dict[str, Any]:
         "ok": res.get("status") == "connected",
         "response_preview": res.get("reply_preview") or "OK • Handshake verified",
     }
+
+
+_EMBEDDING_DIM_RULES: List[tuple[re.Pattern[str], int]] = [
+    (re.compile(r"text-embedding-3-large", re.IGNORECASE), 3072),
+    (re.compile(r"text-embedding-3-small", re.IGNORECASE), 1536),
+    (re.compile(r"text-embedding-ada-002", re.IGNORECASE), 1536),
+    (re.compile(r"gemini-embedding-001|embedding-001", re.IGNORECASE), 3072),
+    (re.compile(r"text-embedding-004", re.IGNORECASE), 768),
+    (re.compile(r"nomic-embed-text", re.IGNORECASE), 768),
+    (re.compile(r"mxbai-embed-large|snowflake-arctic-embed|bge-m3|bge-large|e5-large|voyage-3(?!-lite)", re.IGNORECASE), 1024),
+    (re.compile(r"bge-base|e5-base", re.IGNORECASE), 768),
+    (re.compile(r"bge-small|all-minilm|e5-small", re.IGNORECASE), 384),
+    (re.compile(r"voyage-3-lite", re.IGNORECASE), 512),
+]
+
+
+def _normalize_models_url(base_url: str) -> str:
+    cleaned = (base_url or "").strip().rstrip("/")
+    if not cleaned:
+        return ""
+    cleaned = re.sub(r"/(chat/completions|completions|embeddings|responses)$", "", cleaned, flags=re.IGNORECASE)
+    if cleaned.endswith("/models"):
+        return cleaned
+    if re.search(r"/v\d+(beta\d*)?$", cleaned, flags=re.IGNORECASE) or cleaned.endswith("/api/v1"):
+        return f"{cleaned}/models"
+    return f"{cleaned}/v1/models"
+
+
+def _infer_model_dim(model_id: str) -> Optional[int]:
+    for pat, dim in _EMBEDDING_DIM_RULES:
+        if pat.search(model_id):
+            return dim
+    return None
+
+
+def _is_embedding_model_id(model_id: str) -> bool:
+    low = model_id.lower()
+    return any(
+        tok in low
+        for tok in ("embed", "bge-", "minilm", "e5-", "voyage", "nomic", "arctic-embed")
+    )
+
+
+@router.post("/settings/models")
+async def fetch_available_models(req: FetchModelsRequest) -> Dict[str, Any]:
+    kind = req.kind
+    default_base = settings.embedding_base_url if kind == "embedding" else settings.llm_base_url
+    default_key = settings.embedding_api_key if kind == "embedding" else settings.llm_api_key
+
+    raw_base = (req.base_url or default_base or "").strip()
+    models_url = _normalize_models_url(raw_base)
+
+    api_key = (req.api_key or "").strip()
+    if not api_key or "..." in api_key or "•" in api_key or api_key == "***":
+        api_key = (default_key or "").strip()
+
+    if not models_url:
+        return {
+            "ok": False,
+            "source": "catalog",
+            "models_url": "",
+            "latency_ms": 0.0,
+            "models": [],
+            "error": "Base URL is empty",
+        }
+
+    headers: Dict[str, str] = {"Accept": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    started = time.perf_counter()
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(models_url, headers=headers)
+        latency_ms = round((time.perf_counter() - started) * 1000.0, 1)
+
+        if resp.status_code >= 400:
+            return {
+                "ok": False,
+                "source": "catalog",
+                "models_url": models_url,
+                "latency_ms": latency_ms,
+                "models": [],
+                "error": f"HTTP {resp.status_code} from {models_url}",
+            }
+
+        payload = resp.json()
+        raw_items: List[Any] = []
+        if isinstance(payload, list):
+            raw_items = payload
+        elif isinstance(payload, dict):
+            if isinstance(payload.get("data"), list):
+                raw_items = payload["data"]
+            elif isinstance(payload.get("models"), list):
+                raw_items = payload["models"]
+
+        seen: Dict[str, Dict[str, Any]] = {}
+        for item in raw_items:
+            if isinstance(item, str):
+                raw_id = item.strip()
+                owned_by = None
+            elif isinstance(item, dict):
+                raw_id = str(item.get("id") or item.get("name") or item.get("model") or "").strip()
+                raw_owner = item.get("owned_by") or item.get("provider")
+                owned_by = str(raw_owner).strip() if raw_owner else None
+            else:
+                continue
+
+            if not raw_id:
+                continue
+            clean_id = re.sub(r"^models/", "", raw_id, flags=re.IGNORECASE)
+            is_emb = _is_embedding_model_id(clean_id)
+            dim = _infer_model_dim(clean_id)
+            seen[clean_id] = {
+                "id": clean_id,
+                "label": clean_id,
+                "owned_by": owned_by,
+                "kind": "embedding" if is_emb else "llm",
+                "dimension": dim,
+                "badge": f"{dim}d" if dim else ("embed" if is_emb else None),
+                "source": "live",
+            }
+
+        all_models = list(seen.values())
+        matching = sorted([m for m in all_models if m["kind"] == kind], key=lambda x: x["id"])
+        others = sorted([m for m in all_models if m["kind"] != kind], key=lambda x: x["id"])
+        ordered = matching + others if matching else sorted(all_models, key=lambda x: x["id"])
+
+        return {
+            "ok": True,
+            "source": "live",
+            "models_url": models_url,
+            "latency_ms": latency_ms,
+            "models": ordered,
+            "error": None,
+        }
+    except Exception as exc:
+        latency_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        return {
+            "ok": False,
+            "source": "catalog",
+            "models_url": models_url,
+            "latency_ms": latency_ms,
+            "models": [],
+            "error": str(exc)[:180],
+        }
 
 
 @router.post("/settings/reindex", status_code=status.HTTP_202_ACCEPTED)

@@ -181,6 +181,16 @@
       "mismatchDesc": "Dimensi embedding berbeda dengan tabel sqlite-vec vec_memories aktif. Jalankan Re-index untuk membangun ulang tabel vektor.",
       "reindexBtn": "Re-index Semua Memori"
     },
+    "modelPicker": {
+      "placeholder": "Ketik atau pilih ID model...",
+      "refresh": "Muat ulang daftar model",
+      "fetching": "Mengambil /models...",
+      "liveLabel": "Live /models",
+      "catalogLabel": "Katalog siap",
+      "useCustom": "Gunakan model kustom:",
+      "noMatches": "Tidak ada model yang cocok",
+      "autoDimApplied": "Dimensi otomatis diatur"
+    },
     "card3": {
       "title": "3. Otomasi & Webhook Ingestion",
       "subtitle": "Kendalikan pipeline ekstraksi transkrip eksternal POST /api/v1/ingest.",

@@ -1,6 +1,8 @@
 import {
   AnalyticsSummaryResponse,
   DirectivesPreviewResponse,
+  DiscoveredModelOption,
+  FetchModelsResponse,
   GraphEdge,
   GraphNode,
   GraphResponse,
@@ -12,6 +14,7 @@ import {
   MemoryRecord,
   MemoryStatus,
   MemoryType,
+  ModelCatalogKind,
   ModelPricingProfileId,
   PlaygroundCandidate,
   PlaygroundQueryResponse,
@@ -27,6 +30,12 @@ import { extractMemoriesFromTranscriptText, filterWorkerJobs } from '../utils/ac
 import { buildTokenAnalytics } from '../utils/analytics';
 import { buildDirectivesPreviewPayload } from '../utils/directives';
 import { analyzeMemoryHygiene } from '../utils/hygiene';
+import {
+  getFallbackCatalogModels,
+  isBrowserDirectFetchSafe,
+  normalizeModelsEndpointUrl,
+  parseOpenAiModelsPayload,
+} from '../utils/modelCatalog';
 import { computeCompositeScore, scrubSecretsText } from '../utils/phase1Logic';
 
 const STORAGE_KEY_MEMORIES = 'engram_memories_v1';
@@ -1367,6 +1376,78 @@ export const engramApi = {
       base_url: payload.llm_base_url,
       latency_ms: 84.6,
       response_preview: 'OK • OpenAI-compatible chat/completions handshake verified',
+    };
+  },
+
+  async fetchAvailableModels(payload: {
+    base_url: string;
+    api_key?: string;
+    kind: ModelCatalogKind;
+  }): Promise<FetchModelsResponse> {
+    const modelsUrl = normalizeModelsEndpointUrl(payload.base_url);
+    const fallbackModels: DiscoveredModelOption[] = getFallbackCatalogModels(payload.kind);
+
+    const remote = await tryBackendFetch<FetchModelsResponse>('/api/v1/settings/models', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (remote) {
+      if (remote.models && remote.models.length > 0) {
+        return remote;
+      }
+      return {
+        ...remote,
+        source: 'catalog',
+        models: fallbackModels,
+      };
+    }
+
+    // Standalone SPA mode on port 3000: attempt direct CORS-safe HTTPS /models fetch if valid external URL
+    const trimmedKey = (payload.api_key || '').trim();
+    const isMaskedKey =
+      !trimmedKey || trimmedKey.includes('...') || trimmedKey.includes('•') || trimmedKey === '***';
+
+    if (modelsUrl && isBrowserDirectFetchSafe(payload.base_url) && !isMaskedKey) {
+      const started = performance.now();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2500);
+      try {
+        const res = await fetch(modelsUrl, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${trimmedKey}`,
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timer);
+        if (res.ok) {
+          const json = (await res.json()) as unknown;
+          const parsed = parseOpenAiModelsPayload(json, payload.kind, 'live');
+          if (parsed.length > 0) {
+            return {
+              ok: true,
+              source: 'live',
+              models_url: modelsUrl,
+              latency_ms: Number((performance.now() - started).toFixed(1)),
+              models: parsed,
+              error: null,
+            };
+          }
+        }
+      } catch {
+        clearTimeout(timer);
+      }
+    }
+
+    await new Promise((r) => setTimeout(r, 90));
+    return {
+      ok: true,
+      source: 'catalog',
+      models_url: modelsUrl,
+      latency_ms: 14.2,
+      models: fallbackModels,
+      error: null,
     };
   },
 

@@ -181,6 +181,16 @@
       "mismatchDesc": "Configured embedding dimension differs from active sqlite-vec vec_memories table. Re-index all memories to rebuild the vector table cleanly.",
       "reindexBtn": "Re-index All Memories"
     },
+    "modelPicker": {
+      "placeholder": "Type or select model ID...",
+      "refresh": "Refresh available models",
+      "fetching": "Fetching /models...",
+      "liveLabel": "Live /models",
+      "catalogLabel": "Catalog ready",
+      "useCustom": "Use custom model:",
+      "noMatches": "No matching models in list",
+      "autoDimApplied": "Dimension auto-set"
+    },
     "card3": {
       "title": "3. Automation & Webhook Ingestion",
       "subtitle": "Control the external POST /api/v1/ingest transcript extraction pipeline.",

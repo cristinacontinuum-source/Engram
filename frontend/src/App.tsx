@@ -258,10 +258,11 @@ export default function App() {
     >
       {/* Fixed Left Sidebar (240px width, ReUI Signal Template architecture) */}
       <aside
-        className="w-full md:fixed md:inset-y-0 md:left-0 md:w-[240px] flex flex-col justify-between px-3 pt-14 md:pt-3 pb-3 select-none z-30 hairline-border-r"
+        className="w-full md:fixed md:inset-y-0 md:left-0 md:w-[240px] flex flex-col pt-14 md:pt-0 select-none z-30 hairline-border-r overflow-hidden"
         style={{ backgroundColor: 'var(--bg-sidebar)' }}
       >
-        <div className="space-y-3.5">
+        {/* Pinned Top Brand + Search Header */}
+        <div className="shrink-0 px-3 pt-3 pb-2.5 space-y-3">
           {/* Top Brand Row */}
           <div className="flex items-center justify-between px-1">
             <button
@@ -320,9 +321,16 @@ export default function App() {
               </kbd>
             </button>
           </div>
+        </div>
 
-          {/* Workspace Tree Navigation (Zero Duplicate Links) */}
-          <div className="space-y-1">
+        {/* Scrollable Middle Navigation, Workspaces & Index Volume (Flush Right Scrollbar) */}
+        <div
+          className="flex-1 min-h-0 overflow-y-auto px-3 py-1 flex flex-col justify-between gap-4"
+          data-testid="sidebar-nav-scroll"
+        >
+          <div className="space-y-3.5">
+            {/* Workspace Tree Navigation (Zero Duplicate Links) */}
+            <div className="space-y-1">
             <div
               className="px-2 py-1 text-[11px] font-medium"
               style={{ color: 'var(--text-muted)' }}
@@ -648,7 +656,7 @@ export default function App() {
                     <span>Settings</span>
                   </span>
                   {settings?.dimension_mismatch && (
-                    <span className="px-1.5 py-0.2 rounded-[3px] bg-amber-500/20 text-amber-400 font-mono-data text-[10px] font-bold">
+                    <span className="px-1.5 py-0.2 rounded-[3px] bg-amber-500/20 text-amber-800 dark:text-amber-400 font-mono-data text-[10px] font-bold">
                       !
                     </span>
                   )}
@@ -708,59 +716,61 @@ export default function App() {
               </ul>
             )}
           </div>
-        </div>
+          </div>
 
-        {/* Bottom Section: ReUI Signal "Memory Index Volume" Box + Operator Footer */}
-        <div className="space-y-3 pt-3">
-          {/* Memory Index Volume Widget (ReUI Signal Event Volume pattern) */}
-          <div className="rounded-[4px] hairline-border overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)' }}>
-            <div className="px-3 py-1.5 hairline-border-b flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                Memory Index Volume
-              </span>
-              <span
-                className="font-mono-data text-[10px]"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                vec0[{settings?.current_vec_dimension || 1536}]
-              </span>
-            </div>
-            <div className="p-3 space-y-2">
-              <p
-                className="text-[11px] leading-relaxed"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                Vectors indexed in sqlite-vec WAL ({totalMemoriesCount} total).{' '}
-                {settings?.embedding_mode === 'local' ? 'ONNX Active.' : '0 MB idle RAM.'}
-              </p>
-
-              {/* Striped Progress Bar */}
-              <div className="h-2 w-full rounded-[2px] reui-hatch-track overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 transition-all duration-300"
-                  style={{ width: `${activeRatioPct}%` }}
-                />
+          {/* ReUI Signal "Memory Index Volume" Box (Inside Scroll Area at Bottom) */}
+          <div className="pb-2">
+            <div className="rounded-[4px] hairline-border overflow-hidden" style={{ backgroundColor: 'var(--bg-surface)' }}>
+              <div className="px-3 py-1.5 hairline-border-b flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                  Memory Index Volume
+                </span>
+                <span
+                  className="font-mono-data text-[10px]"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  vec0[{settings?.current_vec_dimension || 1536}]
+                </span>
               </div>
+              <div className="p-3 space-y-2">
+                <p
+                  className="text-[11px] leading-relaxed"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Vectors indexed in sqlite-vec WAL ({totalMemoriesCount} total).{' '}
+                  {settings?.embedding_mode === 'local' ? 'ONNX Active.' : '0 MB idle RAM.'}
+                </p>
 
-              <div className="flex items-center justify-between text-[11px] font-mono-data">
-                <div>
-                  <span className="font-bold" style={{ color: 'var(--text-primary)' }}>
-                    {activeRatioPct}%
-                  </span>{' '}
-                  <span style={{ color: 'var(--text-muted)' }}>Active</span>
+                {/* Striped Progress Bar */}
+                <div className="h-2 w-full rounded-[2px] reui-hatch-track overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 transition-all duration-300"
+                    style={{ width: `${activeRatioPct}%` }}
+                  />
                 </div>
-                <div>
-                  <span className="font-bold" style={{ color: 'var(--text-primary)' }}>
-                    {supersededRatioPct}%
-                  </span>{' '}
-                  <span style={{ color: 'var(--text-muted)' }}>History</span>
+
+                <div className="flex items-center justify-between text-[11px] font-mono-data">
+                  <div>
+                    <span className="font-bold" style={{ color: 'var(--text-primary)' }}>
+                      {activeRatioPct}%
+                    </span>{' '}
+                    <span style={{ color: 'var(--text-muted)' }}>Active</span>
+                  </div>
+                  <div>
+                    <span className="font-bold" style={{ color: 'var(--text-primary)' }}>
+                      {supersededRatioPct}%
+                    </span>{' '}
+                    <span style={{ color: 'var(--text-muted)' }}>History</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Operator Profile Row */}
-          <div className="flex items-center justify-between px-1 pt-0.5">
+        {/* Pinned Operator Profile Row */}
+        <div className="shrink-0 px-3 py-2.5 hairline-border-t">
+          <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2.5 min-w-0">
               <div
                 className="w-7 h-7 rounded-[4px] hairline-border flex items-center justify-center font-mono-data text-[11px] font-bold shrink-0"

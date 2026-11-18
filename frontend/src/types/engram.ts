@@ -397,3 +397,25 @@ export interface AnalyticsSummaryResponse {
   recent_runs: AnalyticsTelemetryRun[];
   session_projection: SessionProjection;
 }
+
+export type ModelCatalogKind = 'llm' | 'embedding';
+
+export interface DiscoveredModelOption {
+  id: string;
+  label: string;
+  owned_by?: string;
+  kind: ModelCatalogKind;
+  dimension?: number;
+  badge?: string;
+  source: 'live' | 'catalog';
+}
+
+export interface FetchModelsResponse {
+  ok: boolean;
+  source: 'live' | 'catalog';
+  models_url: string;
+  latency_ms: number;
+  models: DiscoveredModelOption[];
+  error?: string | null;
+}
+

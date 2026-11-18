@@ -16,6 +16,7 @@ import { engramApi } from '../api/client';
 import { Dictionary } from '../i18n';
 import { SettingsPayload } from '../types/engram';
 import { CustomSelect } from './ui/CustomSelect';
+import { ModelAutocomplete } from './ui/ModelAutocomplete';
 
 interface SettingsTabProps {
   settings: SettingsPayload;
@@ -215,7 +216,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       </div>
 
       {saveBanner && (
-        <div className="px-3.5 py-2.5 rounded-[4px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-mono-data flex items-center gap-2">
+        <div className="px-3.5 py-2.5 rounded-[4px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-400 text-xs font-mono-data flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{saveBanner}</span>
         </div>
@@ -251,7 +252,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label
-              className="block text-[11px] font-medium mb-1.5"
+              className="block text-[11px] font-medium leading-4 mb-1.5"
               style={{ color: 'var(--text-secondary)' }}
             >
               {dict.settings.card1.baseUrl}
@@ -267,7 +268,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
           <div>
             <label
-              className="block text-[11px] font-medium mb-1.5"
+              className="block text-[11px] font-medium leading-4 mb-1.5"
               style={{ color: 'var(--text-secondary)' }}
             >
               {dict.settings.card1.apiKey}
@@ -281,21 +282,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             />
           </div>
 
-          <div>
-            <label
-              className="block text-[11px] font-medium mb-1.5"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              {dict.settings.card1.modelName}
-            </label>
-            <input
-              type="text"
-              value={form.llm_model}
-              onChange={(e) => setForm({ ...form, llm_model: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg hairline-border font-mono-data text-xs focus:outline-none focus:ring-1 focus:ring-[#1E6F5C]/50"
-              style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)' }}
-            />
-          </div>
+          <ModelAutocomplete
+            inputId="settings-llm-model"
+            label={dict.settings.card1.modelName}
+            value={form.llm_model}
+            baseUrl={form.llm_base_url}
+            apiKey={form.llm_api_key}
+            kind="llm"
+            labels={dict.settings.modelPicker}
+            onChange={(nextModel) => setForm({ ...form, llm_model: nextModel })}
+          />
         </div>
 
         {llmTestResult && (
@@ -327,7 +323,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             style={{ backgroundColor: 'var(--bg-elevated)' }}
           >
             Active Table:{' '}
-            <strong className="text-emerald-400">
+            <strong className="text-emerald-700 dark:text-emerald-400">
               vec_memories float[{form.current_vec_dimension}]
             </strong>
           </span>
@@ -382,10 +378,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         </div>
 
         {form.embedding_mode === 'external' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3.5">
+            <div className="lg:col-span-4">
               <label
-                className="block text-[11px] font-medium mb-1.5"
+                className="block text-[11px] font-medium leading-4 mb-1.5"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 {dict.settings.card2.baseUrl}
@@ -399,9 +395,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               />
             </div>
 
-            <div>
+            <div className="lg:col-span-3">
               <label
-                className="block text-[11px] font-medium mb-1.5"
+                className="block text-[11px] font-medium leading-4 mb-1.5"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 {dict.settings.card2.apiKey}
@@ -415,25 +411,32 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               />
             </div>
 
-            <div>
-              <label
-                className="block text-[11px] font-medium mb-1.5"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                {dict.settings.card2.modelName}
-              </label>
-              <input
-                type="text"
+            <div className="lg:col-span-3">
+              <ModelAutocomplete
+                inputId="settings-embedding-model"
+                label={dict.settings.card2.modelName}
                 value={form.embedding_model}
-                onChange={(e) => setForm({ ...form, embedding_model: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg hairline-border font-mono-data text-xs focus:outline-none"
-                style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)' }}
+                baseUrl={form.embedding_base_url}
+                apiKey={form.embedding_api_key}
+                kind="embedding"
+                labels={dict.settings.modelPicker}
+                onChange={(nextModel) => setForm({ ...form, embedding_model: nextModel })}
+                onSelectOption={(opt) => {
+                  if (opt.dimension && opt.dimension > 0) {
+                    setForm((prev) => ({
+                      ...prev,
+                      embedding_model: opt.id,
+                      embedding_dimension: opt.dimension!,
+                      dimension_mismatch: opt.dimension! !== prev.current_vec_dimension,
+                    }));
+                  }
+                }}
               />
             </div>
 
-            <div>
+            <div className="lg:col-span-2">
               <label
-                className="block text-[11px] font-medium mb-1.5"
+                className="block text-[11px] font-medium leading-4 mb-1.5"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 {dict.settings.card2.dimension}
@@ -522,7 +525,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </button>
 
           {embedTestResult && (
-            <div className="font-mono-data text-xs px-3 py-1.5 rounded-[4px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+            <div className="font-mono-data text-xs px-3 py-1.5 rounded-[4px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-400">
               Connected • {embedTestResult.latency_ms}ms • {embedTestResult.detected_dimension}d (
               {embedTestResult.model})
             </div>
@@ -530,16 +533,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         </div>
 
         {hasDimensionMismatch && (
-          <div className="p-4 rounded-[4px] border border-amber-500/40 bg-amber-500/10 space-y-3">
+          <div className="p-4 rounded-[4px] border border-amber-500/45 bg-amber-500/10 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="text-xs font-bold text-amber-300">
+                  <h3 className="text-xs font-bold text-amber-900 dark:text-amber-300">
                     {dict.settings.card2.mismatchTitle} ({form.current_vec_dimension}d →{' '}
                     {form.embedding_dimension}d)
                   </h3>
-                  <p className="text-[11px] text-amber-200/80 mt-0.5">
+                  <p className="text-[11px] text-amber-800 dark:text-amber-200/85 mt-0.5">
                     {dict.settings.card2.mismatchDesc}
                   </p>
                 </div>
@@ -571,7 +574,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               type="button"
               onClick={handleReindex}
               disabled={reindexing}
-              className="hover:underline flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer font-semibold text-emerald-400"
+              className="hover:underline flex items-center gap-1 whitespace-nowrap shrink-0 cursor-pointer font-semibold text-emerald-700 dark:text-emerald-400"
             >
               <RefreshCw className={`w-3 h-3 shrink-0 ${reindexing ? 'animate-spin' : ''}`} />
               <span>{dict.settings.card2.reindexBtn}</span>
